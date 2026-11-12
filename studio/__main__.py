@@ -48,6 +48,7 @@ def main():
     a.add_argument("--times", default="12:15,17:00")
     a.add_argument("--tz", default="America/Chicago")
     a.add_argument("--order", default="", help="clip numbers in posting order")
+    a.add_argument("--flash-days", default="Tuesday,Friday", help="days whose clips carry the Noxi flash")
 
     a = sub.add_parser("texts", help="collect each clip's words and titles for the rules check")
     a.add_argument("--job", required=True)
@@ -76,7 +77,7 @@ def main():
     elif x.step == "sheet":
         tools.sheet(x.job, nums(x.only))
     elif x.step == "schedule":
-        plan.schedule(x.job, x.start, x.times, x.tz, x.order)
+        plan.schedule(x.job, x.start, x.times, x.tz, x.order, x.flash_days)
     elif x.step == "texts":
         review.texts(x.job)
     elif x.step == "channels":

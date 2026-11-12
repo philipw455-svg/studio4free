@@ -6,7 +6,7 @@ an optional brand line, an optional zoom, and muted words.
 import re
 import sys
 
-from .common import FONTS, ROOT, job_dir, probe, read_json, run, write_json
+from .common import FONTS, ROOT, has_audio, job_dir, probe, read_json, run, write_json
 
 SIZES = {"9:16": (1080, 1920), "4:5": (1080, 1350), "1:1": (1080, 1080), "16:9": (1920, 1080)}
 STRONG = {"fuck", "fucking", "fucked", "fucker", "motherfucker", "shit", "shitty", "bullshit", "bitch",
@@ -16,6 +16,10 @@ DEFAULT_STYLE = {
     "overlay": "poster",      # a safe-zone look from overlays.py: banner-safe, glass, lower, wide or poster. "" for the first banner.
     "title_seconds": 2.0,     # poster only: how long the opening title stays before it fades.
     "end_cue": "FOLLOW / SUBSCRIBE",  # shown in the last seconds of a clip that has no next part. "" for none.
+    "flash_video": "assets/brand/endcard.mp4",  # the Noxi flash: this end card plays after a clip whose "flash" is true.
+    "flash_title": "Remember the night",  # used only when the end card video is missing: a drawn card over the last seconds.
+    "flash_sub": "The group photo app for nights out",
+    "flash_seconds": 2,       # a clip gets the flash when its own "flash" is true.
     "layout": "banner",       # used when overlay is empty. banner: the first banner look. plain: no banner.
     "fit": "blur",            # plain layout only. blur: whole frame over a blurred copy. crop: fill the frame.
     "focus": 0.5,             # where the frame sits: 0 (left edge) to 1 (right edge), or [second, value] steps at camera cuts.
@@ -181,7 +185,6 @@ def build_ass(style: dict, size: tuple, title: str, words: list, mutes: set, dur
     shadow = int(c.get("shadow", 5 if banner else 3) * k)
     boxed = bool(c.get("box"))
     banner = banner or bool(look)
-    place = f"{{\\an5\\pos({W // 2},{cap_y})}}" if banner else ""
     head = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {W}
@@ -505,11 +508,25 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
             video = video.replace("[vb];[vb]", f"[vraw];{chain};[vcut]", 1)
         else:
             video = video[:-4] + f"[vraw];{chain};[vcut]null[v0]"
+    flash = bool(clip.get("flash", style.get("flash"))) and H > W
+    card = ROOT / style["flash_video"] if style.get("flash_video") else None
+    append = flash and card is not None and card.exists()
+    if flash and not append:
+        # No end card video: draw a brand card over the last two seconds instead. It adds no length to the clip.
+        from .overlays import flash_card
+        fp = out_dir / f"{stem}-flash.png"
+        flash_card((W, H), style).save(fp)
+        temps.append(fp)
+        idx = 1 + extra.count("-i")
+        extra += ["-loop", "1", "-framerate", "30", "-t", f"{dur:.3f}", "-i", fp]
+        st = max(0.0, dur - float(style.get("flash_seconds", 2)))
+        video = (video[:-4] + f"[f0];[{idx}:v]format=rgba,fade=t=in:st={st:.3f}:d=0.18:alpha=1[fl];"
+                 f"[f0][fl]overlay=0:0:eof_action=pass[v0]")
     esc = str(ass).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     fonts = str(FONTS).replace("\\", "/").replace(":", "\\:")
     video += f";[v0]ass='{esc}':fontsdir='{fonts}',fps=30,format=yuv420p[v]"
     af = [f"volume=enable='between(t,{w['s']:.2f},{w['e']:.2f})':volume=0" for w in words if id(w) in mutes]
-    audio = "[0:a]" + ",".join(af + ["aresample=48000"]) + "[a]"
+    audio = "[0:a]" + ",".join(af + ["aresample=48000", "aformat=channel_layouts=stereo"]) + "[a]"
     whoosh = ROOT / "assets" / "sfx" / "whoosh.mp3"
     if cuts and style.get("cut_sound", True) and whoosh.exists():
         wi = 1 + extra.count("-i")
@@ -518,10 +535,24 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
                  + ";".join(f"[w{i}]adelay={int(float(c['at']) * 1000)}:all=1,volume=0.22,aresample=48000[x{i}]"
                             for i, c in enumerate(cuts))
                  + ";[a0]" + "".join(f"[x{i}]" for i in range(len(cuts)))
-                 + f"amix=inputs={len(cuts) + 1}:duration=first:normalize=0[a]")
+                 + f"amix=inputs={len(cuts) + 1}:duration=first:normalize=0,aformat=channel_layouts=stereo[a]")
+    vout, aout, added = "[v]", "[a]", 0.0
+    if append:
+        # The Noxi flash: the owner's own end card video plays after the clip.
+        idx = 1 + extra.count("-i")
+        extra += ["-i", card]
+        added = probe(card)["duration"]
+        video += (f";[{idx}:v]scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,"
+                  f"setsar=1,fps=30,format=yuv420p[ev]")
+        if has_audio(card):
+            audio += f";[{idx}:a]aresample=48000,aformat=channel_layouts=stereo[ea]"
+        else:
+            audio += f";anullsrc=r=48000:cl=stereo,atrim=0:{added:.3f}[ea]"
+        audio += ";[v][a][ev][ea]concat=n=2:v=1:a=1[vo][ao]"
+        vout, aout = "[vo]", "[ao]"
     out = out_dir / f"{stem}.mp4"
     run(["ffmpeg", "-y", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", d / "source.mp4", *extra,
-         "-filter_complex", video + ";" + audio, "-map", "[v]", "-map", "[a]",
+         "-filter_complex", video + ";" + audio, "-map", vout, "-map", aout,
          "-c:v", "libx264", "-preset", "medium", "-crf", "23", "-maxrate", "3500k", "-bufsize", "7000k", "-c:a", "aac", "-b:a", "160k",
          "-movflags", "+faststart", out])
     ass.unlink()
@@ -529,9 +560,10 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
         png.unlink()
     for tmp in temps:
         tmp.unlink()
-    return {"n": n, "file": f"clips/{out.name}", "srt": f"clips/{stem}.srt", "seconds": round(dur, 1),
+    return {"n": n, "file": f"clips/{out.name}", "srt": f"clips/{stem}.srt", "seconds": round(dur + added, 1),
             "title": clip.get("title", ""), "muted": len(mutes), "mb": round(out.stat().st_size / 1048576, 1),
-            **({"series": clip.get("series", ""), "part": part, "parts": parts} if multi else {})}
+            **({"series": clip.get("series", ""), "part": part, "parts": parts} if multi else {}),
+            **({"flash": True} if flash else {})}
 
 
 def render(job: str, only: list | None = None) -> None:

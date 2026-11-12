@@ -101,6 +101,29 @@ def _brand_row(img, draw, style: dict, cx: float, cy: float, k: float, text: str
     return total
 
 
+def flash_card(size: tuple, style: dict):
+    """A brand card for the last two seconds of a clip.
+
+    It sits at the top of the safe zone, where the opening title was, so it stays clear of the captions.
+    """
+    from PIL import Image, ImageDraw
+    W, H = size
+    k = W / 1080
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    ink = (12, 12, 12, 255)
+    x0, y0, x1, y1 = 65 * k, 290 * k, 1015 * k, 606 * k
+    d.rounded_rectangle([x0, y0, x1, y1], radius=36 * k, fill=_rgb(style["accent"]))
+    title = " ".join(str(style.get("flash_title", "Remember the night")).upper().split())
+    font, fs, lines = _fit(d, title, "Anton-Regular.ttf", (104 * k, 92 * k, 80 * k, 68 * k), (x1 - x0) - 100 * k, 1)
+    d.text((W / 2, 424 * k), lines[0], font=font, fill=ink, anchor="ms")
+    _brand_row(img, d, style, W / 2, 486 * k, k, style.get("brand") or "", colour=ink, size=40, mark_size=60)
+    sub = str(style.get("flash_sub", "The group photo app for nights out"))
+    if sub:
+        d.text((W / 2, 556 * k), sub, font=_font("Montserrat-SemiBold.ttf", 29 * k), fill=(34, 34, 34, 255), anchor="mm")
+    return img
+
+
 def design(name: str, size: tuple, title: str, style: dict, part_label: str = "", source: tuple = (16, 9)) -> dict:
     from PIL import Image, ImageDraw
     W, H = size

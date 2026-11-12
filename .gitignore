@@ -2,6 +2,6 @@ jobs/
 __pycache__/
 *.pyc
 .venv/
-page/overlays-*.png
+page/overlays-*
 stock/
 .DS_Store
