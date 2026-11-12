@@ -45,6 +45,11 @@ def probe(path: Path) -> dict:
             "duration": float(j.get("format", {}).get("duration", 0) or 0)}
 
 
+def has_audio(path: Path) -> bool:
+    out = run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", path])
+    return bool(out.strip())
+
+
 def clock(t: float) -> str:
     t = max(0.0, t)
     h, m, s = int(t // 3600), int(t % 3600 // 60), t % 60

@@ -6,7 +6,8 @@ from zoneinfo import ZoneInfo
 from .common import job_dir, read_json, write_json
 
 
-def schedule(job: str, start: str, times: str = "12:15,17:00", tz: str = "America/Chicago", order: str = "") -> None:
+def schedule(job: str, start: str, times: str = "12:15,17:00", tz: str = "America/Chicago", order: str = "",
+             flash_days: str = "Tuesday,Friday") -> None:
     d = job_dir(job)
     if not (d / "rendered.json").exists():
         sys.exit("No rendered clips yet. Run the cut step first.")
@@ -43,3 +44,15 @@ def schedule(job: str, start: str, times: str = "12:15,17:00", tz: str = "Americ
     for it in items:
         tag = f"  (part {it['part']} of {it['parts']})" if it.get("parts") else ""
         print(f"Clip {it['clip']:>2}  {it['publishAt']}  {it['title']}{tag}")
+    # The Noxi flash belongs on clips that post on a flash day, and on no other clip.
+    want = {d.strip().lower() for d in flash_days.split(",") if d.strip()}
+    has = {c["n"]: bool(c.get("flash")) for c in clips}
+    redo = []
+    for it in items:
+        day = datetime.fromisoformat(it["publishAt"]).strftime("%A")
+        it["flashDay"] = day.lower() in want
+        if it["flashDay"] != has.get(it["clip"], False):
+            redo.append((it["clip"], day, it["flashDay"]))
+    write_json(d / "posting.json", {"tz": tz, "times": times, "items": items})
+    for n, day, on in redo:
+        print(f"Cut clip {n} again with \"flash\": {'true' if on else 'false'}. It posts on a {day}.")

@@ -51,7 +51,7 @@ CREATE = """mutation($input: CreatePostInput!) {
 }"""
 
 
-def create_post(channel: dict, text: str, video_url: str, due_at: str, title: str, draft: bool) -> str:
+def create_post(channel: dict, text: str, video_url: str, due_at: str, title: str, draft: bool, comment: str = "") -> str:
     inp = {"channelId": channel["id"], "text": text, "schedulingType": "automatic", "mode": "customScheduled",
            "dueAt": datetime.fromisoformat(due_at).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
            "assets": [{"video": {"url": video_url}}], "aiAssisted": True}
@@ -61,6 +61,9 @@ def create_post(channel: dict, text: str, video_url: str, due_at: str, title: st
         inp["metadata"] = {"youtube": {"title": title[:100], "categoryId": "22"}}
     elif channel["service"] == "instagram":
         inp["metadata"] = {"instagram": {"type": "reel", "shouldShareToFeed": True}}
+        if comment:
+            # Buffer posts this as the first comment under the reel. Buffer has no such field for YouTube.
+            inp["metadata"]["instagram"]["firstComment"] = comment
     res = gql(CREATE, {"input": inp})["createPost"]
     if res.get("message"):
         raise RuntimeError(res["message"])
@@ -95,7 +98,7 @@ def post(job: str, services: str, draft: bool, only: list | None = None) -> None
                 continue
             try:
                 it["buffer"][svc] = create_post(c, it.get("description") or it["title"], it["url"],
-                                                it["publishAt"], it["title"], draft)
+                                                it["publishAt"], it["title"], draft, it.get("comment", ""))
                 it["status"] = "draft in Buffer" if draft else "scheduled in Buffer"
                 print(f"Clip {it['clip']}: {svc} {it['status']} for {it['publishAt']}")
             except RuntimeError as e:
