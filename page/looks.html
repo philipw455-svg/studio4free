@@ -1,0 +1,107 @@
+<title>Studio4Free Looks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wdth,wght@112,800&family=Figtree:wght@400;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;700&family=Space+Grotesk:wght@500;700&family=Spline+Sans+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a contact sheet. Each look gets a caption strip and two phone frames, Jobs beside Schedule. */
+:root{ --bg:#f4f4f2; --ink:#17181c; --muted:#62656e; --line:#dcdcd6; --panel:#ffffff; --mark:#17181c; --mark-ink:#ffffff;
+  --ui:"Inter","Helvetica Neue",Arial,sans-serif; --num:"JetBrains Mono",ui-monospace,Menlo,monospace; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#131417; --ink:#eeeef0; --muted:#9a9da8; --line:#2a2c33; --panel:#1b1d22; --mark:#eeeef0; --mark-ink:#131417; color-scheme:dark } }
+:root[data-theme="dark"]{ --bg:#131417; --ink:#eeeef0; --muted:#9a9da8; --line:#2a2c33; --panel:#1b1d22; --mark:#eeeef0; --mark-ink:#131417; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--ui);-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+h1,h2,p{margin:0}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+.head{display:flex;flex-direction:column;gap:8px;max-width:60ch}
+.head h1{font:700 30px/1.15 var(--ui);letter-spacing:-.02em;text-wrap:balance}
+.head p{color:var(--muted)}
+.look{display:flex;flex-direction:column;gap:16px;border-top:1px solid var(--line);padding-top:22px}
+.cap{display:flex;gap:14px;align-items:flex-start}
+.cap .k{flex:none;width:44px;height:44px;border-radius:12px;background:var(--mark);color:var(--mark-ink);display:grid;place-items:center;font:700 20px var(--num)}
+.cap div{min-width:0}
+.cap h2{font:700 21px/1.2 var(--ui)}
+.cap p{color:var(--muted);font-size:15px;max-width:62ch}
+.phones{display:flex;gap:18px;flex-wrap:wrap}
+.tag{font:500 11px var(--num);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+
+/* ---- the phone mock: every colour and shape comes from the look's own tokens ---- */
+.ph{width:300px;max-width:100%;height:600px;border-radius:34px;border:8px solid #0c0c0f;background:var(--b);color:var(--i);font-family:var(--fb);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.ph .scr{flex:1;padding:16px 14px 0;display:flex;flex-direction:column;gap:11px;overflow:hidden;min-height:0}
+.ph .brand{font:var(--wd) 17px var(--fd);letter-spacing:var(--ls)}
+.ph .brand u{text-decoration:none;color:var(--a)}
+.ph .h{font:var(--wd) 25px/1.05 var(--fd);letter-spacing:var(--ls);text-transform:var(--tt)}
+.ph .sub{font-size:12.5px;color:var(--m);line-height:1.4}
+.ph .btns{display:flex;gap:8px}
+.ph .bt{flex:1;min-height:42px;border-radius:var(--rb);display:grid;place-items:center;font-weight:700;font-size:13.5px;background:var(--s);border:var(--bd)}
+.ph .bt.p{background:var(--a);color:var(--ai)}
+.ph .cd{background:var(--c);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:7px;border:var(--bd);box-shadow:var(--sh)}
+.ph .cd b{font-size:15px;line-height:1.25}
+.ph .rw{display:flex;gap:6px;flex-wrap:wrap}
+.ph .pl{font:500 9.5px/1 var(--fm);letter-spacing:.06em;text-transform:uppercase;padding:5px 7px;border-radius:var(--rp);background:var(--s);color:var(--m)}
+.ph .pl.ok{background:var(--okb);color:var(--ok)}
+.ph .pl.w{background:var(--wb);color:var(--w)}
+.ph .mt{font-size:11.5px;color:var(--m)}
+.ph .dy{font-weight:700;font-size:12.5px;margin-top:2px}
+.ph .sl{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;background:var(--c);border-radius:var(--r);padding:10px 12px;border:var(--bd);box-shadow:var(--sh)}
+.ph .sl.o{background:transparent;border:1.5px dashed var(--l);box-shadow:none;color:var(--m);font-size:12.5px}
+.ph .sl .t{font:500 12px var(--fm);padding-top:1px}
+.ph .sl b{font-size:13px;line-height:1.3;display:block;margin-bottom:5px}
+.ph .tb{flex:none;display:flex;gap:4px;padding:7px 12px 12px;background:var(--tbb);border-top:1px solid var(--l)}
+.ph .tb span{flex:1;min-height:38px;border-radius:var(--rb);display:grid;place-items:center;font-weight:700;font-size:12px;color:var(--m)}
+.ph .tb span.on{background:var(--ton);color:var(--toni)}
+
+/* A. Plum: the look the page has now */
+.lk-a{--b:#f2eff7;--c:#fff;--s:#e8e3f1;--i:#1d1630;--m:#665d7d;--l:#dcd5e8;--a:#d92662;--ai:#fff;--ok:#0f7a5c;--okb:#d9f2e8;--w:#8a5a00;--wb:#fbecc8;
+  --r:16px;--rb:13px;--rp:999px;--bd:0;--sh:none;--fd:"Archivo",Arial,sans-serif;--fb:"Figtree",Arial,sans-serif;--fm:"Spline Sans Mono",monospace;--wd:800;--ls:-.01em;--tt:none;--tbb:#fff;--ton:#fbe3eb;--toni:#d92662}
+/* B. Edit bay: a dark timeline */
+.lk-b{--b:#0f1216;--c:#181d24;--s:#222933;--i:#e8edf3;--m:#8a96a6;--l:#2a323d;--a:#ffb020;--ai:#1a1200;--ok:#5ad1a0;--okb:#11342a;--w:#ffb020;--wb:#3a2b08;
+  --r:6px;--rb:6px;--rp:4px;--bd:1px solid #2a323d;--sh:none;--fd:"Space Grotesk",Arial,sans-serif;--fb:"Inter",Arial,sans-serif;--fm:"JetBrains Mono",monospace;--wd:700;--ls:-.02em;--tt:none;--tbb:#0b0d10;--ton:#222933;--toni:#ffb020}
+.lk-b .sl{border-left:3px solid var(--a)} .lk-b .sl.o{border-left:1.5px dashed var(--l)}
+/* C. Poster: loud type, hard edges */
+.lk-c{--b:#fffdf5;--c:#fff;--s:#fff;--i:#111;--m:#555;--l:#111;--a:#1f3bff;--ai:#fff;--ok:#111;--okb:#b8ff5a;--w:#111;--wb:#ffd84a;
+  --r:0px;--rb:0px;--rp:0px;--bd:2px solid #111;--sh:4px 4px 0 #111;--fd:"Anton",Impact,sans-serif;--fb:"Inter",Arial,sans-serif;--fm:"JetBrains Mono",monospace;--wd:400;--ls:.01em;--tt:uppercase;--tbb:#fffdf5;--ton:#111;--toni:#fffdf5}
+.lk-c .h{font-size:34px} .lk-c .tb{border-top:2px solid #111} .lk-c .pl{border:1.5px solid #111;color:#111}
+/* D. Daylight: soft colour and glass */
+.lk-d{--b:linear-gradient(160deg,#d9f3ee 0%,#e3ecfb 55%,#f6e6f3 100%);--c:rgba(255,255,255,.62);--s:rgba(255,255,255,.55);--i:#12303a;--m:#4d6a73;--l:rgba(18,48,58,.16);--a:#0b8f86;--ai:#fff;--ok:#0b6b4f;--okb:rgba(120,220,180,.45);--w:#7a4d00;--wb:rgba(255,214,120,.55);
+  --r:22px;--rb:999px;--rp:999px;--bd:1px solid rgba(255,255,255,.8);--sh:0 8px 24px rgba(18,48,58,.08);--fd:"Outfit",Arial,sans-serif;--fb:"Outfit",Arial,sans-serif;--fm:"Outfit",Arial,sans-serif;--wd:700;--ls:-.02em;--tt:none;--tbb:rgba(255,255,255,.6);--ton:#0b8f86;--toni:#fff}
+/* E. Print room: warm paper and a serif */
+.lk-e{--b:#f3ece0;--c:#fbf7ef;--s:#e9dfcd;--i:#2a2118;--m:#75685a;--l:#d9ccb6;--a:#1e5a46;--ai:#fbf7ef;--ok:#1e5a46;--okb:#d6e6da;--w:#8c4a12;--wb:#f2dcc0;
+  --r:10px;--rb:10px;--rp:5px;--bd:1px solid #d9ccb6;--sh:none;--fd:"Fraunces",Georgia,serif;--fb:"Figtree",Arial,sans-serif;--fm:"Spline Sans Mono",monospace;--wd:700;--ls:-.01em;--tt:none;--tbb:#fbf7ef;--ton:#1e5a46;--toni:#fbf7ef}
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <h1>Five looks for Studio4Free</h1>
+    <p>Each look shows the Jobs screen and the Schedule screen with your real clips. The buttons and the flow stay the same in every look. Tell me the letter you want.</p>
+  </div>
+  <div id="looks"></div>
+</div>
+
+<script>
+(() => {
+const LOOKS = [
+  ['a','A','Plum','The look the page has now. Soft lilac, a pink accent and rounded cards. Friendly and calm.'],
+  ['b','B','Edit bay','Dark, like video editing software. An amber accent, square corners and timecode type. Serious and focused.'],
+  ['c','C','Poster','Loud capital headings, black outlines and hard shadows. A bright blue accent. Bold and playful.'],
+  ['d','D','Daylight','Soft colour that fades from mint to sky, with see-through cards and pill buttons. Light and modern.'],
+  ['e','E','Print room','Warm paper, a serif heading and a deep green accent. Quiet, like a printed planner.'],
+];
+const jobs = `<div class="scr"><div class="brand">Studio<u>4</u>Free</div><div class="h">Jobs</div>
+  <div class="sub">Paste a YouTube link. Claude Code cuts the clips and fills your schedule.</div>
+  <div class="btns"><div class="bt p">New clipping job</div><div class="bt">New edit job</div></div>
+  <div class="cd"><div class="rw"><span class="pl">Clips</span><span class="pl ok">Scheduled</span></div><b>journey</b><div class="mt">20 clips · 2 a day from Nov 20</div></div>
+  <div class="cd"><div class="rw"><span class="pl">Clips</span><span class="pl ok">Scheduled</span></div><b>tate</b><div class="mt">20 clips · YouTube and TikTok</div></div>
+  <div class="cd"><div class="rw"><span class="pl">Edit</span><span class="pl w">Waiting</span></div><b>Your next job</b><div class="mt">Example row</div></div></div>`;
+const sched = `<div class="scr"><div class="brand">Studio<u>4</u>Free</div><div class="h">Schedule</div>
+  <div class="dy">Friday, Nov 20</div>
+  <div class="sl"><span class="t">12:15</span><div><b>Liam Fitzgerald: the first thing to do after a breakup</b><div class="rw"><span class="pl w">Draft</span><span class="pl">journey</span></div></div></div>
+  <div class="sl"><span class="t">17:00</span><div><b>Would you stay friends with someone who flaked on you like this?</b><div class="rw"><span class="pl w">Draft</span><span class="pl">journey</span></div></div></div>
+  <div class="dy">Saturday, Nov 21</div>
+  <div class="sl"><span class="t">12:15</span><div><b>Liam Fitzgerald's simple fitness plan</b><div class="rw"><span class="pl w">Draft</span><span class="pl">journey</span></div></div></div>
+  <div class="sl o"><span class="t">17:00</span><div>Open</div></div></div>`;
+const tabs = on => `<div class="tb">${['Jobs','Schedule','Setup'].map(t => `<span class="${t === on ? 'on' : ''}">${t}</span>`).join('')}</div>`;
+document.getElementById('looks').outerHTML = LOOKS.map(l => `<section class="look"><div class="cap"><span class="k">${l[1]}</span><div><h2>${l[2]}</h2><p>${l[3]}</p></div></div>
+  <div class="phones"><div><div class="tag">Jobs</div><div class="ph lk-${l[0]}" style="background:var(--b)">${jobs}${tabs('Jobs')}</div></div>
+  <div><div class="tag">Schedule</div><div class="ph lk-${l[0]}" style="background:var(--b)">${sched}${tabs('Schedule')}</div></div></div></section>`).join('');
+})();
+</script>
