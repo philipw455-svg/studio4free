@@ -30,6 +30,7 @@ DEFAULT_STYLE = {
                               # 0.38 seconds times this, and for as long as it takes until the next step starts, so the zoom never snaps.
     "cut_push": 0.5,          # how far a cutaway pushes in while it plays. 1 is 103% to 111%. 0.5 is 103% to 107%.
     "cut_sound": True,        # a quiet whoosh on each cutaway
+    "max_mb": 19.0,           # the largest file a clip may be. The page takes files under 20 MB.
     "captions": True,
     "caption_words": 3,
     "caption_upper": True,
@@ -551,9 +552,11 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
         audio += ";[v][a][ev][ea]concat=n=2:v=1:a=1[vo][ao]"
         vout, aout = "[vo]", "[ao]"
     out = out_dir / f"{stem}.mp4"
+    # The page takes files under 20 MB. A long clip gets a lower top bitrate, so it still fits.
+    rate = max(600, min(3500, int(float(style.get("max_mb", 19.0)) * 8192 * 0.96 / (dur + added)) - 160))
     run(["ffmpeg", "-y", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", d / "source.mp4", *extra,
          "-filter_complex", video + ";" + audio, "-map", vout, "-map", aout,
-         "-c:v", "libx264", "-preset", "medium", "-crf", "23", "-maxrate", "3500k", "-bufsize", "7000k", "-c:a", "aac", "-b:a", "160k",
+         "-c:v", "libx264", "-preset", "medium", "-crf", "23", "-maxrate", f"{rate}k", "-bufsize", f"{rate * 2}k", "-c:a", "aac", "-b:a", "160k",
          "-movflags", "+faststart", out])
     ass.unlink()
     if banner or look:

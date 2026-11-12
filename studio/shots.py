@@ -5,7 +5,7 @@ import subprocess
 from .common import job_dir, read_json
 
 
-def camera_cuts(source, start: float, dur: float, limit: float = 0.25) -> list:
+def camera_cuts(source, start: float, dur: float, limit: float = 0.12) -> list:
     """Seconds into the clip at which the camera changes."""
     p = subprocess.run(
         ["ffmpeg", "-hide_banner", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", str(source), "-an",
