@@ -18,8 +18,11 @@ DEFAULT_STYLE = {
     "end_cue": "FOLLOW / SUBSCRIBE",  # shown in the last seconds of a clip that has no next part. "" for none.
     "layout": "banner",       # used when overlay is empty. banner: the first banner look. plain: no banner.
     "fit": "blur",            # plain layout only. blur: whole frame over a blurred copy. crop: fill the frame.
-    "focus": 0.5,             # crop only: 0 is the left edge, 1 is the right edge.
+    "focus": None,            # None: follow the faces. Or 0 (left edge) to 1 (right edge), or [second, value] steps.
     "zoom": "Smooth",         # none | Smooth | Slow creep
+    "zoom_steps": True,       # a new zoom level every sixth word and at each sentence. False: one gentle move.
+    "cut_sound": True,        # a quiet whoosh on each cutaway
+    "face_aware": True,       # frame each shot on its largest face and keep the chin above the captions
     "captions": True,
     "caption_words": 3,
     "caption_upper": True,
@@ -233,8 +236,114 @@ def zoom_expr(kind: str, dur: float) -> str:
     return "1"
 
 
+ZOOM_LEVELS = [1.0, 1.13, 1.04, 1.19]
+ZOOM_MOVES = {"Smooth": 0.38, "Slow creep": 1.1}   # seconds each zoom step takes
+
+
+def zoom_plan(words: list, dur: float, kind: str, stepped: bool):
+    """The zoom as an ffmpeg expression, and as a function of the clip time for the framing maths.
+    Stepped is the zoom of the owner's first clips: a new framing every sixth word and at the start of each
+    sentence. The framings cycle through ZOOM_LEVELS, and the last one keeps pushing in slowly to the end."""
+    move = ZOOM_MOVES.get(kind) if stepped else None
+    if not move or not words:
+        if kind == "Slow creep":
+            return zoom_expr(kind, dur), lambda t: 1 + 0.08 * t / dur
+        if kind == "Smooth":
+            return zoom_expr(kind, dur), lambda t: 1 + 0.06 * (1 - (1 - min(t / 1.4, 1)) ** 3)
+        return "1", lambda t: 1.0
+    keys, n, level, last = [], 0, 0, 0.0
+    for i, w in enumerate(words):
+        n += 1
+        if i and (n >= 6 or re.search(r"[.?!]$", words[i - 1]["w"])):
+            t = max(0.0, w["s"] - 0.05)
+            if t - last < 0.6 or dur - t < 1.0:
+                continue
+            level, n, last = level + 1, 0, t
+            keys.append((round(t, 2), ZOOM_LEVELS[level % 4] - ZOOM_LEVELS[(level - 1) % 4]))
+    linear = kind == "Slow creep"
+    end = keys[-1][0] if keys else 0.0
+    terms = ["1"]
+    for t, dz in keys:
+        x = f"clip((t-{t:.2f})/{move}\\,0\\,1)"
+        terms.append(f"{dz:+.3f}*" + (x if linear else f"(1-pow(1-{x}\\,3))"))
+    terms.append(f"+0.08*clip((t-{end:.2f})/2.5\\,0\\,1)")
+
+    def at(t: float) -> float:
+        z = 1.0
+        for kt, dz in keys:
+            x = min(1.0, max(0.0, (t - kt) / move))
+            z += dz * (x if linear else 1 - (1 - x) ** 3)
+        return max(1.0, z + 0.08 * min(1.0, max(0.0, (t - end) / 2.5)))
+
+    return "max(1\\,(" + "".join(terms) + "))", at
+
+
+def steps_at(steps, t: float) -> float:
+    """The value of a number or of [second, value, glide] steps at a clip time. It mirrors focus_expr."""
+    if isinstance(steps, (int, float, str)):
+        return float(steps)
+    rows = sorted((float(x[0]), float(x[1]), float(x[2]) if len(x) > 2 else 0.0) for x in steps)
+    value = rows[0][1]
+    for i, (st, v, d) in enumerate(rows):
+        if i and t >= st:
+            prev = rows[i - 1][1]
+            value = prev + (v - prev) * min(1.0, (t - st) / d) if d > 0 else v
+    return value
+
+
+def cutaway_filters(d, cuts: list, first_input: int, region: tuple, base: str, out: str):
+    """Stock clips laid over the speaker for about a second, each on the word it shows.
+    A cutaway is {"file": "stock/4344.mp4", "at": 38.0, "seconds": 1.15, "from": 2}; `at` is seconds into the clip."""
+    x, y, w, h = region
+    inputs, parts, cur = [], [], base
+    for i, c in enumerate(cuts):
+        at, secs, frm = float(c["at"]), float(c.get("seconds", 1.15)), float(c.get("from", 0))
+        path = d / c["file"]
+        if not path.exists():
+            path = ROOT / c["file"]
+        if not path.exists():
+            sys.exit(f"The cutaway file is missing: {c['file']}")
+        inputs += ["-ss", f"{frm:.2f}", "-t", f"{secs + 0.2:.2f}", "-i", path]
+        nxt = out if i == len(cuts) - 1 else f"ct{i}"
+        grow = f"(1+0.06*t/{secs:.2f})"
+        parts.append(
+            f"[{first_input + i}:v]fps=30,scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
+            f"scale=w='trunc({w}*{grow}/2)*2':h='trunc({h}*{grow}/2)*2':eval=frame,crop={w}:{h},setsar=1,"
+            f"setpts=PTS-STARTPTS+{at:.3f}/TB[cv{i}];"
+            f"[{cur}][cv{i}]overlay={x}:{y}:enable='between(t,{at:.3f},{at + secs:.3f})':eof_action=pass[{nxt}]")
+        cur = nxt
+    return inputs, ";".join(parts)
+
+
+def zoomed(bw: int, bh: int, z: str, w: int, h: int, xoff: str, yoff: str) -> str:
+    """Scale the source by the zoom `z` and show a w x h window of it. `xoff` and `yoff` say how far the
+    window's left and top edges sit inside the scaled picture, in pixels. ffmpeg's crop cannot follow a
+    picture that changes size, so the scaled picture is laid over a fixed canvas instead."""
+    return (f"color=black:s={w}x{h}:r=30[zc];"
+            f"[0:v]scale=w='trunc({bw}*{z}/2)*2':h='trunc({bh}*{z}/2)*2':eval=frame[zv];"
+            f"[zc][zv]overlay=x='-({xoff})':y='-({yoff})':eval=frame:shortest=1")
+
+
 def even(x: float) -> int:
     return int(x) // 2 * 2
+
+
+def focus_expr(focus) -> str:
+    """Where the crop sits, 0 (left) to 1 (right). One number, or steps for a video that changes camera.
+    [[0, 0.5], [8.9, 0.47]] means 0.5 from the start and 0.47 from second 8.9 of the clip.
+    A third number glides to the new value over that many seconds, for a speaker who moves: [52.6, 0.4, 1.4]."""
+    if isinstance(focus, (int, float, str)):
+        return f"{float(focus):.3f}"
+    steps = sorted((float(x[0]), float(x[1]), float(x[2]) if len(x) > 2 else 0.0) for x in focus)
+    parts = [f"{steps[0][1]:.3f}"]
+    for i in range(1, len(steps)):
+        t, v, d = steps[i]
+        prev = steps[i - 1][1]
+        parts.append(f"({prev:.3f}+({v - prev:.3f})*clip((t-{t:.3f})/{d:.3f}\\,0\\,1))" if d > 0 else f"{v:.3f}")
+    expr = parts[-1]
+    for i in range(len(steps) - 2, -1, -1):
+        expr = f"if(lt(t\\,{steps[i + 1][0]:.3f})\\,{parts[i]}\\,{expr})"
+    return expr
 
 
 def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) -> dict:
@@ -270,9 +379,54 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     ass.write_text(build_ass(style, (W, H), clip.get("title", ""), words, mutes, dur, banner, cue, look), encoding="utf-8")
     (out_dir / f"{stem}.srt").write_text(build_srt(words, dur), encoding="utf-8")
 
-    z = zoom_expr(clip.get("zoom", style.get("zoom", "none")), dur)
+    kind = clip.get("zoom", style.get("zoom", "none"))
+    stepped = bool(style.get("zoom_steps", True)) and kind in ZOOM_MOVES
+    z, zoom_at = zoom_plan(words, dur, kind, stepped)
+    region = (0, 0, W, H)          # where the source picture sits in the frame
     extra, temps = [], []
-    focus = float(clip.get("focus", style.get("focus", 0.5)))
+    cuts = sorted(clip.get("cutaways") or [], key=lambda c: float(c["at"]))
+    framing = {}
+
+    def window(bw: int, bh2: int, w: int, h: int, top: int) -> str:
+        """The speaker's part of the picture, as the filter that cuts it out. With the face model, each shot
+        is framed on its largest face and the chin is kept above the captions. `focus` on a clip sets the
+        place across by hand."""
+        manual = clip.get("focus", style.get("focus"))
+        ay, zz, xoff = ("0.300" if stepped else "0.500"), z, None
+        from . import faces
+        if style.get("face_aware", True) and faces.available():
+            c = (look or {}).get("cap") or {}
+            k = H / 1920
+            size = c.get("size", 144 if banner else 92) * k
+            edge = c.get("outline", 9 if banner else 7) * k
+            cap_top = (c.get("y", 1320) * k if (banner or look) else H * 0.785 - size * 0.6) - size * 0.62 - edge
+            cue_top = (look or {}).get("cue_y", 1555) * k - size * 0.31 - edge
+            shown = bool(style.get("captions", True))
+
+            def limit_at(t: float):
+                tops = ([cap_top] if shown else []) + ([cue_top] if cue and t >= dur - 2.7 else [])
+                return (min(tops) - top) / h if tops else None
+
+            def by_hand(t: float):
+                zt = zoom_at(t)
+                mid = steps_at(manual, t) * (1 - w / (bw * zt)) + w / (2 * bw * zt)
+                return mid - w / (2 * bw * zt), mid + w / (2 * bw * zt)
+
+            src = d / "source.mp4"
+            plan = faces.plan(faces.detect(src, start, dur), faces.camera_cuts(src, start, dur), dur, zoom_at,
+                              sw / sh, bh2 / h, w / bw, limit_at,
+                              [(float(x["at"]), float(x["at"]) + float(x.get("seconds", 1.15))) for x in cuts],
+                              by_hand if manual is not None else None)
+            framing.update(plan)
+            ay = focus_expr(plan["ay"])
+            if any(row[1] != 1.0 for row in plan["z0"] + plan["amp"]):
+                zz = f"({focus_expr(plan['z0'])})*(1+(({z})-1)*({focus_expr(plan['amp'])}))"
+            if manual is None:
+                xoff = f"clip(({focus_expr(plan['center'])})*{bw}*{zz}-{w / 2:.0f}\\,0\\,{bw}*{zz}-{w})"
+        if xoff is None:
+            xoff = f"({bw}*{zz}-{w})*({focus_expr(manual if manual is not None else 0.5)})"
+        return zoomed(bw, bh2, zz, w, h, xoff, f"({bh2}*{zz}-{h})*({ay})")
+
     if look:
         png = out_dir / f"{stem}-overlay.png"
         look["image"].save(png)
@@ -280,17 +434,18 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
         v = look["video"]
         if v[0] == "wide":
             _, vx, vt, vw, vh, bg = v
+            region = (vx, vt, vw, vh)
             sc = max(vw / sw, vh / sh)
             bw, bh2 = even(sw * sc + 1), even(sh * sc + 1)
-            video = (f"[0:v]scale=w='trunc({bw}*{z}/2)*2':h='trunc({bh2}*{z}/2)*2':eval=frame,"
-                     f"crop={vw}:{vh}:(iw-{vw})/2:(ih-{vh})/2,pad={W}:{H}:{vx}:{vt}:0x{bg.lstrip('#')},setsar=1[vb];"
+            video = (zoomed(bw, bh2, z, vw, vh, f"({bw}*{z}-{vw})/2", f"({bh2}*{z}-{vh})/2")
+                     + f",pad={W}:{H}:{vx}:{vt}:0x{bg.lstrip('#')},setsar=1[vb];"
                      f"[vb][1:v]overlay=0:0[v0]")
         else:
             top, rh = (v[1], v[2]) if v[0] == "region" else (0, H)
+            region = (0, top, W, rh)
             cover = max(W / sw, rh / sh)
             bw, bh2 = even(sw * cover + 1), even(sh * cover + 1)
-            video = (f"[0:v]scale=w='trunc({bw}*{z}/2)*2':h='trunc({bh2}*{z}/2)*2':eval=frame,"
-                     f"crop={W}:{rh}:(iw-{W})*{focus:.3f}:(ih-{rh})/2,pad={W}:{H}:0:{top}:black,setsar=1[vb];"
+            video = (window(bw, bh2, W, rh, top) + f",pad={W}:{H}:0:{top}:black,setsar=1[vb];"
                      f"[vb][1:v]overlay=0:0[v0]")
         idx = 2
         if look.get("intro"):
@@ -320,29 +475,41 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
         extra = ["-i", png]
         bh = banner_height((W, H))
         rh = H - bh
+        region = (0, bh, W, rh)
         cover = max(W / sw, rh / sh)
         bw, bh2 = even(sw * cover + 1), even(sh * cover + 1)
-        focus = float(clip.get("focus", style.get("focus", 0.5)))
-        video = (f"[0:v]scale=w='trunc({bw}*{z}/2)*2':h='trunc({bh2}*{z}/2)*2':eval=frame,"
-                 f"crop={W}:{rh}:(iw-{W})*{focus:.3f}:(ih-{rh})/2,pad={W}:{H}:0:{bh}:black,setsar=1[vb];"
+        video = (window(bw, bh2, W, rh, bh) + f",pad={W}:{H}:0:{bh}:black,setsar=1[vb];"
                  f"[vb][1:v]overlay=0:0[v0]")
     elif style.get("fit") == "crop" or sw / sh <= W / H + 0.01:
         cover = max(W / sw, H / sh)
         bw, bh = even(sw * cover + 1), even(sh * cover + 1)
-        focus = float(clip.get("focus", style.get("focus", 0.5)))
-        video = (f"[0:v]scale=w='trunc({bw}*{z}/2)*2':h='trunc({bh}*{z}/2)*2':eval=frame,"
-                 f"crop={W}:{H}:(iw-{W})*{focus:.3f}:(ih-{H})/2,setsar=1[v0]")
+        video = window(bw, bh, W, H, 0) + ",setsar=1[v0]"
     else:
         fh = even(W * sh / sw)
-        video = (f"[0:v]split=2[a][b];"
-                 f"[a]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=28:4,eq=brightness=-0.22:saturation=0.8[bg];"
-                 f"[b]scale=w='trunc({W}*{z}/2)*2':h='trunc({fh}*{z}/2)*2':eval=frame,crop={W}:{fh}:(iw-{W})/2:(ih-{fh})/2[fg];"
+        video = (zoomed(W, fh, z, W, fh, f"({W}*{z}-{W})/2", f"({fh}*{z}-{fh})/2") + "[fg];"
+                 f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=28:4,eq=brightness=-0.22:saturation=0.8[bg];"
                  f"[bg][fg]overlay=0:(H-h)/2,setsar=1[v0]")
+    if cuts:
+        cut_in, chain = cutaway_filters(d, cuts, 1 + extra.count("-i"), region, "vraw", "vcut")
+        extra += cut_in
+        if "[vb];[vb]" in video:
+            video = video.replace("[vb];[vb]", f"[vraw];{chain};[vcut]", 1)
+        else:
+            video = video[:-4] + f"[vraw];{chain};[vcut]null[v0]"
     esc = str(ass).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     fonts = str(FONTS).replace("\\", "/").replace(":", "\\:")
     video += f";[v0]ass='{esc}':fontsdir='{fonts}',fps=30,format=yuv420p[v]"
     af = [f"volume=enable='between(t,{w['s']:.2f},{w['e']:.2f})':volume=0" for w in words if id(w) in mutes]
     audio = "[0:a]" + ",".join(af + ["aresample=48000"]) + "[a]"
+    whoosh = ROOT / "assets" / "sfx" / "whoosh.mp3"
+    if cuts and style.get("cut_sound", True) and whoosh.exists():
+        wi = 1 + extra.count("-i")
+        extra += ["-i", whoosh]
+        audio = (audio[:-3] + "[a0];" + f"[{wi}:a]asplit={len(cuts)}" + "".join(f"[w{i}]" for i in range(len(cuts))) + ";"
+                 + ";".join(f"[w{i}]adelay={int(float(c['at']) * 1000)}:all=1,volume=0.22,aresample=48000[x{i}]"
+                            for i, c in enumerate(cuts))
+                 + ";[a0]" + "".join(f"[x{i}]" for i in range(len(cuts)))
+                 + f"amix=inputs={len(cuts) + 1}:duration=first:normalize=0[a]")
     out = out_dir / f"{stem}.mp4"
     run(["ffmpeg", "-y", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", d / "source.mp4", *extra,
          "-filter_complex", video + ";" + audio, "-map", "[v]", "-map", "[a]",
@@ -355,6 +522,7 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
         tmp.unlink()
     return {"n": n, "file": f"clips/{out.name}", "srt": f"clips/{stem}.srt", "seconds": round(dur, 1),
             "title": clip.get("title", ""), "muted": len(mutes), "mb": round(out.stat().st_size / 1048576, 1),
+            **({"faces": {"checks": framing["checks"], "touch": framing["touch"]}} if framing else {}),
             **({"series": clip.get("series", ""), "part": part, "parts": parts} if multi else {})}
 
 
@@ -374,4 +542,9 @@ def render(job: str, only: list | None = None) -> None:
         r = render_clip(d, info, transcript, style, clip)
         done.append(r)
         print(f"Clip {r['n']}: {r['seconds']}s, {r['mb']} MB, {r['muted']} muted words -> {d / r['file']}", flush=True)
+        if "faces" in r:
+            touch = r["faces"]["touch"]
+            print("  Captions: clear of the face in all " + str(r["faces"]["checks"]) + " checks." if not touch else
+                  "  Captions touch a face at " + ", ".join(f"{a}-{b}s" for a, b in touch) + ". Look at those frames.",
+                  flush=True)
     write_json(d / "rendered.json", done)

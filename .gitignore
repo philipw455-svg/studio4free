@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .venv/
 page/overlays-*.png
+stock/
+.DS_Store
