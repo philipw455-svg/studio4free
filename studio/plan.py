@@ -15,6 +15,16 @@ def schedule(job: str, start: str, times: str = "12:15,17:00", tz: str = "Americ
         want = [int(x) for x in order.split(",")]
         by = {c["n"]: c for c in clips}
         clips = [by[n] for n in want if n in by]
+    # Keep the parts of one story together and in order: Part 1 first, then the parts that follow.
+    ordered, seen = [], set()
+    for c in clips:
+        s = c.get("series")
+        if not s:
+            ordered.append(c)
+        elif s not in seen:
+            seen.add(s)
+            ordered += sorted((x for x in clips if x.get("series") == s), key=lambda x: x.get("part", 0))
+    clips = ordered
     slots = [time.fromisoformat(t.strip()) for t in times.split(",")]
     zone = ZoneInfo(tz)
     day = date.fromisoformat(start)
@@ -25,9 +35,11 @@ def schedule(job: str, start: str, times: str = "12:15,17:00", tz: str = "Americ
                 break
             when = datetime.combine(day, s, zone)
             items.append({"clip": clips[i]["n"], "file": clips[i]["file"], "title": clips[i]["title"],
-                          "seconds": clips[i]["seconds"], "publishAt": when.isoformat(), "status": "planned"})
+                          "seconds": clips[i]["seconds"], "publishAt": when.isoformat(), "status": "planned",
+                          **{k: clips[i][k] for k in ("series", "part", "parts") if k in clips[i]}})
             i += 1
         day += timedelta(days=1)
     write_json(d / "posting.json", {"tz": tz, "times": times, "items": items})
     for it in items:
-        print(f"Clip {it['clip']:>2}  {it['publishAt']}  {it['title']}")
+        tag = f"  (part {it['part']} of {it['parts']})" if it.get("parts") else ""
+        print(f"Clip {it['clip']:>2}  {it['publishAt']}  {it['title']}{tag}")

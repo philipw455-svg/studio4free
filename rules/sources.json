@@ -1,16 +1,61 @@
 {
   "note": "Official pages to read at the time of every rules check. Rules change, so never rely on memory of them.",
   "youtube": [
-    {"title": "YouTube Community Guidelines", "url": "https://support.google.com/youtube/answer/9288567"},
-    {"title": "YouTube spam, deceptive practices and misleading titles", "url": "https://support.google.com/youtube/answer/2801973"},
-    {"title": "Copyright on YouTube", "url": "https://support.google.com/youtube/answer/2797466"},
-    {"title": "YouTube channel monetization policies, including reused content", "url": "https://support.google.com/youtube/answer/1311392"},
-    {"title": "YouTube advertiser-friendly content guidelines", "url": "https://support.google.com/youtube/answer/6162278"},
-    {"title": "YouTube paid promotion and disclosure labels", "url": "https://support.google.com/youtube/answer/154235"}
+    {
+      "title": "YouTube Community Guidelines",
+      "url": "https://support.google.com/youtube/answer/9288567"
+    },
+    {
+      "title": "YouTube spam, deceptive practices and misleading titles",
+      "url": "https://support.google.com/youtube/answer/2801973"
+    },
+    {
+      "title": "Copyright on YouTube",
+      "url": "https://support.google.com/youtube/answer/2797466"
+    },
+    {
+      "title": "YouTube channel monetization policies, including reused content",
+      "url": "https://support.google.com/youtube/answer/1311392"
+    },
+    {
+      "title": "YouTube advertiser-friendly content guidelines",
+      "url": "https://support.google.com/youtube/answer/6162278"
+    },
+    {
+      "title": "YouTube paid promotion and disclosure labels",
+      "url": "https://support.google.com/youtube/answer/154235"
+    }
   ],
   "tiktok": [
-    {"title": "TikTok Community Guidelines", "url": "https://www.tiktok.com/community-guidelines/en"},
-    {"title": "TikTok Intellectual Property Policy", "url": "https://www.tiktok.com/legal/page/global/copyright-policy/en"},
-    {"title": "TikTok Branded Content Policy", "url": "https://www.tiktok.com/legal/page/global/bc-policy/en"}
+    {
+      "title": "TikTok Community Guidelines",
+      "url": "https://www.tiktok.com/community-guidelines/en"
+    },
+    {
+      "title": "TikTok Intellectual Property Policy",
+      "url": "https://www.tiktok.com/legal/page/global/copyright-policy/en"
+    },
+    {
+      "title": "TikTok Branded Content Policy",
+      "url": "https://www.tiktok.com/legal/page/global/bc-policy/en"
+    }
+  ],
+  "instagram": [
+    {
+      "title": "Meta Community Standards",
+      "url": "https://transparency.meta.com/policies/community-standards/"
+    },
+    {
+      "title": "Instagram recommendation guidelines",
+      "url": "https://help.instagram.com/313829416281232"
+    },
+    {
+      "title": "Instagram branded content policies",
+      "url": "https://help.instagram.com/1695974997209192"
+    },
+    {
+      "title": "Instagram copyright help",
+      "url": "https://help.instagram.com/126382350847838"
+    }
   ]
 }

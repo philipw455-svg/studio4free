@@ -25,6 +25,6 @@ def texts(job: str) -> None:
     src = read_json(ROOT / "rules" / "sources.json")
     print(f"Wrote {d / 'clip_texts.json'} ({len(out)} clips).")
     print("Read these official pages now, then compare every clip with them:")
-    for site in ("youtube", "tiktok"):
+    for site in ("youtube", "instagram", "tiktok"):
         for s in src[site]:
             print(f"  {s['title']}: {s['url']}")

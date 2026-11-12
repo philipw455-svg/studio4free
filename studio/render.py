@@ -107,7 +107,7 @@ def banner_height(size: tuple) -> int:
     return even(400 * size[0] / 1080)
 
 
-def make_overlay(path, size: tuple, title: str, style: dict) -> None:
+def make_overlay(path, size: tuple, title: str, style: dict, part_label: str = "") -> None:
     """Draw the still parts of the banner layout: banner, title, bar, brand row and bottom fade."""
     from PIL import Image, ImageDraw, ImageFont
     W, H = size
@@ -131,6 +131,10 @@ def make_overlay(path, size: tuple, title: str, style: dict) -> None:
         lines = lines[:3]
         for i, line in enumerate(reversed(lines)):
             d.text((W / 2, 230 * k - i * fs * k * 1.02), line, font=font, fill=(255, 255, 255, 255), anchor="ms")
+    if part_label:
+        pf = ImageFont.truetype(str(FONTS / "Montserrat-ExtraBold.ttf"), int(30 * k))
+        d.text((W / 2, 264 * k), part_label, font=pf, fill=style["accent"], anchor="mm")
+    elif text:
         d.rounded_rectangle([W / 2 - 60 * k, 258 * k, W / 2 + 60 * k, 266 * k], radius=4 * k, fill=style["accent"])
     brand = style.get("brand") or ""
     logo = ROOT / style["logo"] if style.get("logo") else None
@@ -149,7 +153,8 @@ def make_overlay(path, size: tuple, title: str, style: dict) -> None:
     img.save(path)
 
 
-def build_ass(style: dict, size: tuple, title: str, words: list, mutes: set, dur: float, banner: bool = False) -> str:
+def build_ass(style: dict, size: tuple, title: str, words: list, mutes: set, dur: float, banner: bool = False,
+              cue: str = "") -> str:
     W, H = size
     k = H / 1920
     font = style["font"]
@@ -196,6 +201,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     parts.append(f"{{\\c{acc}}}{txt}{{\\c&HFFFFFF&}}" if j == i else txt)
                 pop = "{\\fscx108\\fscy108\\t(0,90,\\fscx100\\fscy100)}" if i == 0 else ""
                 ev.append(f"Dialogue: 3,{ass_time(t0)},{ass_time(t1)},Cap,,0,0,0,,{place}{pop}{' '.join(parts)}")
+    if cue:
+        t0 = max(0.0, dur - 2.6)
+        ev.append(f"Dialogue: 4,{ass_time(t0)},{ass_time(dur)},Cap,,0,0,0,,"
+                  f"{{\\an5\\pos({W // 2},{int(H * 0.81)})\\fs{int(cap * 0.5)}\\c{ass_colour(style['accent'])}\\fad(200,0)}}{clean(cue)}")
     return head + "\n".join(ev) + "\n"
 
 
@@ -237,7 +246,10 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     stem = f"clip{n:02d}"
     ass = out_dir / f"{stem}.ass"
     banner = style.get("layout", "banner") == "banner" and H > W
-    ass.write_text(build_ass(style, (W, H), clip.get("title", ""), words, mutes, dur, banner), encoding="utf-8")
+    part, parts = int(clip.get("part") or 0), int(clip.get("parts") or 0)
+    multi = parts > 1 and 1 <= part <= parts
+    cue = f"FOLLOW FOR PART {part + 1}" if multi and part < parts else ""
+    ass.write_text(build_ass(style, (W, H), clip.get("title", ""), words, mutes, dur, banner, cue), encoding="utf-8")
     (out_dir / f"{stem}.srt").write_text(build_srt(words, dur), encoding="utf-8")
 
     z = zoom_expr(clip.get("zoom", style.get("zoom", "none")), dur)
@@ -245,7 +257,7 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     extra = []
     if banner:
         png = out_dir / f"{stem}-overlay.png"
-        make_overlay(png, (W, H), clip.get("title", ""), style)
+        make_overlay(png, (W, H), clip.get("title", ""), style, f"PART {part} OF {parts}" if multi else "")
         extra = ["-i", png]
         bh = banner_height((W, H))
         rh = H - bh
@@ -281,7 +293,8 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     if banner:
         png.unlink()
     return {"n": n, "file": f"clips/{out.name}", "srt": f"clips/{stem}.srt", "seconds": round(dur, 1),
-            "title": clip.get("title", ""), "muted": len(mutes), "mb": round(out.stat().st_size / 1048576, 1)}
+            "title": clip.get("title", ""), "muted": len(mutes), "mb": round(out.stat().st_size / 1048576, 1),
+            **({"series": clip.get("series", ""), "part": part, "parts": parts} if multi else {})}
 
 
 def render(job: str, only: list | None = None) -> None:
