@@ -69,6 +69,7 @@ def post(job: str, services: str, draft: bool, only: list | None = None) -> None
     """Read posting.json and create one Buffer post per clip and channel.
 
     Every item needs: publishAt, title, description and url (the public video link).
+    An item with "hold": true is skipped. Set it for clips the rules check marked as a risk.
     """
     d = job_dir(job)
     plan = read_json(d / "posting.json")
@@ -78,6 +79,9 @@ def post(job: str, services: str, draft: bool, only: list | None = None) -> None
         sys.exit(f"Buffer has no channel for: {services}")
     for it in plan["items"]:
         if only and it["clip"] not in only:
+            continue
+        if it.get("hold"):
+            print(f"Clip {it['clip']}: held back by the rules check.")
             continue
         if not it.get("url"):
             print(f"Clip {it['clip']}: skipped, it has no public video link yet.")

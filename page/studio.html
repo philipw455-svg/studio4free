@@ -57,6 +57,9 @@ button.card{text-align:left;width:100%}
 .pill{display:inline-block;font-weight:600;font-size:11px;line-height:1;letter-spacing:.05em;text-transform:uppercase;padding:6px 10px;border-radius:999px;background:var(--glass-2);color:var(--ink);white-space:nowrap}
 .pill.ok{background:var(--ok)} .pill.wait{background:var(--wait)} .pill.info{background:var(--info)}
 .pill.hot{background:var(--solid);color:var(--deep)}
+.pill.bad{background:rgba(255,84,104,.62)}
+.rules ul{margin:6px 0 0;padding-left:18px}
+.rules li{margin-bottom:4px}
 .note{background:var(--glass-2);border:1px solid var(--edge);border-radius:20px;padding:12px 16px;font-size:14.5px}
 .empty{border:1.5px dashed var(--edge);border-radius:var(--r);padding:22px 18px;color:var(--muted)}
 .empty b{color:var(--ink)}
@@ -150,7 +153,7 @@ const LENS = ['Under 20 seconds','20 to 40 seconds','40 to 60 seconds','Whatever
 const KINDS = ['Strong opinions','Funny moments','Stories','Advice and tips','Emotional moments','Surprising facts','Disagreements','Quotable one-liners'];
 const ESTYLES = ['Quick-cut talking clip','Raw funny moments','Heavy-edit comedy'];
 const EDITS = ['Cut filler words','Cut silences','Add captions','Mute strong language','Add a title at the top','Make it vertical'];
-const STATUS = { sent:['Waiting for Claude Code','wait'], working:['Claude Code is working','info'], shortlist:['Pick your clips','hot'], cutting:['Cutting clips','info'],
+const STATUS = { sent:['Waiting for Claude Code','wait'], working:['Claude Code is working','info'], shortlist:['Pick your clips','hot'], cutting:['Cutting clips','info'], checking:['Checking the rules','info'],
   review:['Check the clips','hot'], scheduling:['Sending to Buffer','info'], scheduled:['Scheduled','ok'], done:['Done','ok'], blocked:['Blocked','wait'] };
 
 const S = { view:'jobs', id:null, jobs:new Map(), set:Object.assign({}, DEF), store:'wait', note:'', form:null, showPast:false };
@@ -293,10 +296,12 @@ function vJob(){
         h('span', {class:'tcode mono'}, tcode(x.start) + ' → ' + tcode(x.end) + ' · ' + Math.round(x.end - x.start) + 's'))),
       j.status === 'shortlist' ? h('button', {class:'btn pri wide', type:'button', onclick:async e => { const b = e.currentTarget; b.disabled = true; const r = await tell(b, 'Studio4Free: cut the kept moments for job "' + j.name + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.'); await saveJob(id, {status:'cutting', shortlist:sl}); j.sentNote = told(r); render(); }}, 'Cut the kept moments (', cnt, ')') : null)); }
   if (clips.length){
-    const open = clips.filter(c => !c.publishAt).length;
+    const open = clips.filter(c => !c.publishAt).length, held = clips.filter(c => c.check && c.check.level === 'risk' && !c.check.override).length;
     out.push(h('div', {class:'sect'}, h('div', {class:'label'}, clips.length + (clips.length === 1 ? ' clip' : ' clips')),
       open ? h('button', {class:'btn wide', type:'button', onclick:() => { fillSlots(j); saveJob(id, {clips:j.clips}); render(); }}, 'Fill the next open times (' + open + (open === 1 ? ' clip)' : ' clips)')) : null,
       clips.map(c => clipCard(id, j, c)),
+      held ? h('p', {class:'note'}, held + (held === 1 ? ' clip has' : ' clips have') + ' a rules risk. Claude Code will not schedule ' + (held === 1 ? 'it' : 'them') + ' unless you choose "Post anyway".') : null,
+      act('Check these clips against the platform rules', 'checking', 'Studio4Free: check the clips of job "' + j.name + '" (job id ' + id + ') against the platform rules. Follow CLAUDE.md in the studio4free repository.'),
       j.status === 'review' ? act('Schedule these in Buffer', 'scheduling', 'Studio4Free: schedule the clips of job "' + j.name + '" (job id ' + id + ') in Buffer. Follow CLAUDE.md in the studio4free repository.', true) : null)); }
   if (!sl.length && !clips.length) out.push(h('div', {class:'empty'}, h('b', null, 'Nothing to show yet. '), j.kind === 'edit' ? 'The edited video appears here when Claude Code finishes it.' : 'The moments Claude Code finds appear here. You pick the ones to cut.'));
   let sure = false; out.push(h('button', {class:'btn sm warn', type:'button', style:'align-self:flex-start', onclick:e => { if (sure) dropJob(id); else { sure = true; e.currentTarget.textContent = 'Delete this job for good?'; } }}, 'Delete job'));
@@ -308,11 +313,21 @@ function clipCard(id, j, c){
   const dl = downloads && /^[0-9a-f]{32}$/.test(c.asset || '') ? h('button', {class:'btn sm', type:'button', onclick:async e => { const b = e.currentTarget; b.disabled = true; b.textContent = 'Preparing…';
     try { const blob = await (await fetch('/_blob/' + c.asset)).blob(); await downloads.save({filename:(j.name || 'clip').replace(/[^\w -]+/g, '').trim().replace(/\s+/g, '-') + '-' + c.n + '.mp4', data:blob}); b.textContent = 'Saved'; } catch (err) { b.textContent = 'Download'; } b.disabled = false; }}, 'Download') : null;
   return h('div', {class:'card'}, h('div', {class:'clip'}, vid, h('div', {class:'side'},
-      h('div', {class:'row'}, h('span', {class:'pill'}, 'Clip ' + c.n), c.status ? h('span', {class:'pill ' + pillFor(c.status)}, /publish/i.test(c.status) ? 'Published' : /schedul/i.test(c.status) ? 'Scheduled' : /draft/i.test(c.status) ? 'Draft' : 'Status') : null),
+      h('div', {class:'row'}, h('span', {class:'pill'}, 'Clip ' + c.n), rulesPill(c), c.status ? h('span', {class:'pill ' + pillFor(c.status)}, /publish/i.test(c.status) ? 'Published' : /schedul/i.test(c.status) ? 'Scheduled' : /draft/i.test(c.status) ? 'Draft' : 'Status') : null),
       c.status ? h('p', {class:'small muted', style:'overflow-wrap:anywhere'}, String(c.status)) : null,
       field('Publish time', null, h('input', {type:'datetime-local', id:'f-at-' + k, value:c.publishAt ? wall(c.publishAt) : '', onchange:e => { c.publishAt = e.target.value ? wallToISO(e.target.value) : ''; save(); }}), 'f-at-' + k), dl)),
+    rulesBox(c, save),
     field('Title', null, h('input', {type:'text', id:'f-t-' + k, value:c.title || '', onchange:e => { c.title = e.target.value; save(); }}), 'f-t-' + k),
     field('Description', null, h('textarea', {id:'f-d-' + k, value:c.description || '', onchange:e => { c.description = e.target.value; save(); }}), 'f-d-' + k));
+}
+function rulesPill(c){ const k = c.check && c.check.level; return h('span', {class:'pill ' + ({clear:'ok', look:'wait', risk:'bad'}[k] || '')}, k === 'clear' ? 'Rules: clear' : k === 'look' ? 'Rules: look' : k === 'risk' ? 'Rules: risk' : 'Rules: not checked'); }
+function rulesBox(c, save){
+  const ck = c.check; if (!ck || !((ck.notes || []).length || ck.level === 'risk')) return null;
+  const src = (ck.sources || []).filter(s => /^https:\/\//.test(s.url || ''));
+  return h('div', {class:'note rules'}, h('b', null, 'Rules check' + (ck.at ? ', ' + new Date(ck.at).toLocaleDateString() : '')),
+    (ck.notes || []).length ? h('ul', null, ck.notes.map(n => h('li', null, String(n)))) : null,
+    src.length ? h('p', {class:'small muted'}, 'Read: ', src.flatMap((s, i) => [i ? ', ' : '', h('a', {href:s.url, target:'_blank', rel:'noopener'}, String(s.title || s.url))])) : null,
+    ck.level === 'risk' ? h('div', {class:'row', style:'margin-top:8px'}, h('button', {class:'chip', type:'button', 'aria-pressed':String(!!ck.override), onclick:e => { ck.override = !ck.override; e.currentTarget.setAttribute('aria-pressed', String(ck.override)); save(); }}, 'Post anyway')) : null);
 }
 function fillSlots(j){
   const taken = new Set(allClips().map(x => wall(x.c.publishAt))), times = (S.set.times || DEF.times).slice().sort();

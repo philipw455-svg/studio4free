@@ -1,7 +1,7 @@
 """Clip studio command line. Run: python -m studio <step> --job NAME"""
 import argparse
 
-from . import buffer, fetch, plan, render, transcribe
+from . import buffer, fetch, plan, render, review, transcribe
 
 
 def nums(text):
@@ -32,6 +32,9 @@ def main():
     a.add_argument("--tz", default="America/Chicago")
     a.add_argument("--order", default="", help="clip numbers in posting order")
 
+    a = sub.add_parser("texts", help="collect each clip's words and titles for the rules check")
+    a.add_argument("--job", required=True)
+
     sub.add_parser("channels", help="list the Buffer channels")
 
     a = sub.add_parser("post", help="create the Buffer posts from posting.json")
@@ -49,6 +52,8 @@ def main():
         render.render(x.job, nums(x.only))
     elif x.step == "schedule":
         plan.schedule(x.job, x.start, x.times, x.tz, x.order)
+    elif x.step == "texts":
+        review.texts(x.job)
     elif x.step == "channels":
         for c in buffer.channels():
             print(f"{c['service']:<10} {c.get('displayName') or c['name']}  ({c['id']})")
