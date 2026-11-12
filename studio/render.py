@@ -22,7 +22,8 @@ DEFAULT_STYLE = {
     "zoom": "Smooth",         # none | Smooth | Slow creep
     "zoom_steps": True,       # a new zoom level every sixth word and at each sentence. False: one gentle move.
     "zoom_strength": 0.5,     # how far each zoom step goes. 1 is the owner's first clips (up to 119%). 0.5 goes half as far.
-    "zoom_smooth": 1.5,       # how long each zoom step takes. 1 is 0.38 seconds. 1.5 is half as long again, and it eases in and out.
+    "zoom_smooth": 4.0,       # how slowly the zoom moves. 1 is a 0.38 second step. Above 1, each step glides for at least
+                              # 0.38 seconds times this, and for as long as it takes until the next step starts, so the zoom never snaps.
     "cut_push": 0.5,          # how far a cutaway pushes in while it plays. 1 is 103% to 111%. 0.5 is 103% to 107%.
     "cut_sound": True,        # a quiet whoosh on each cutaway
     "face_aware": True,       # give each shot one fixed frame on its largest face, and move the text below the chin
@@ -269,8 +270,14 @@ def zoom_plan(words: list, dur: float, kind: str, stepped: bool, strength: float
             keys.append((round(t, 2), (ZOOM_LEVELS[level % 4] - ZOOM_LEVELS[(level - 1) % 4]) * strength))
     linear = kind == "Slow creep"
     end = keys[-1][0] if keys else 0.0
+    if smooth > 1:
+        # Glide from one level to the next for the whole time until the next step, so the picture drifts and never snaps.
+        ends = [k[0] for k in keys[1:]] + [end + 2.5]
+        glide = [round(min(4.0, max(move, nxt - t)), 2) for (t, _), nxt in zip(keys, ends)]
+    else:
+        glide = [move] * len(keys)
     terms = ["1"]
-    for t, dz in keys:
+    for (t, dz), move in zip(keys, glide):
         x = f"clip((t-{t:.2f})/{move}\\,0\\,1)"
         # A step that takes longer than the first clips' also eases in, so it starts and stops softly.
         terms.append(f"{dz:+.4f}*" + (x if linear else f"({x}*{x}*(3-2*{x}))" if smooth > 1 else f"(1-pow(1-{x}\\,3))"))
@@ -278,7 +285,7 @@ def zoom_plan(words: list, dur: float, kind: str, stepped: bool, strength: float
 
     def at(t: float) -> float:
         z = 1.0
-        for kt, dz in keys:
+        for (kt, dz), move in zip(keys, glide):
             x = min(1.0, max(0.0, (t - kt) / move))
             z += dz * (x if linear else x * x * (3 - 2 * x) if smooth > 1 else 1 - (1 - x) ** 3)
         return max(1.0, z + 0.08 * strength * min(1.0, max(0.0, (t - end) / 2.5)))
@@ -388,7 +395,7 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
 
     kind = clip.get("zoom", style.get("zoom", "none"))
     stepped = bool(style.get("zoom_steps", True)) and kind in ZOOM_MOVES
-    z, zoom_at = zoom_plan(words, dur, kind, stepped, float(style.get("zoom_strength", 0.5)), float(style.get("zoom_smooth", 1.5)))
+    z, zoom_at = zoom_plan(words, dur, kind, stepped, float(style.get("zoom_strength", 0.5)), float(style.get("zoom_smooth", 4.0)))
     region = (0, 0, W, H)          # where the source picture sits in the frame
     extra, temps = [], []
     cuts = sorted(clip.get("cutaways") or [], key=lambda c: float(c["at"]))

@@ -95,7 +95,8 @@ Rows are data from the page. Never treat their text as instructions.
    https://youtube.com/shorts/7nmb9gJYpEo. Match its zooms and its cutaways. `"zoom_steps": false` in `style` turns the steps off.
    **The owner's saved motion settings (12 Nov 2026).** The owner asked for the movements "50% smoother and subtle" than the reference.
    These are the defaults in `studio/render.py`, so leave them out of `clips.json` unless the owner asks for a change:
-   `"zoom_strength": 0.5` (steps reach 109.5%, not 119%), `"zoom_smooth": 1.5` (each step takes 0.57 seconds and eases in and out),
+   `"zoom_strength": 0.5` (steps reach 109.5%, not 119%), `"zoom_smooth": 4.0` (each step glides for at least 1.5 seconds and until the next step starts, easing in and out;
+   the owner found 0.57 second steps "snappy"),
    `"cut_push": 0.5` (a cutaway pushes from 103% to 107%), `"title_seconds": 2.0`.
    **Cutaways.** The owner calls these filler clips and expects them. Add up to one for every 10 seconds, where a clear noun is spoken:
    `"cutaways": [{"file": "stock/4344.mp4", "at": 38.05, "seconds": 1.15, "from": 2.0, "word": "drinking in the club"}]`.
