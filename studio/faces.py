@@ -119,21 +119,24 @@ def _subject(shot: list, window) -> list:
 
 
 def plan(samples: list, cuts: list, dur: float, zoom_at, aspect: float, r: float, win: float, limit_at,
-         skip: list = (), window=None, top: float = 0.015) -> dict:
-    """Work out, shot by shot, where the frame should sit.
+         max_drop: float, skip: list = (), window=None) -> dict:
+    """Work out, shot by shot, where the picture sits and how far down the text must go.
 
-    center: the speaker's place across the source (0 left, 1 right), as steps for render.focus_expr.
-    ay:     the part of the height a zoom holds still, chosen so the chin stays above the captions.
-    z0:     an extra zoom for a shot whose face sits too low to clear the captions any other way.
-    amp:    how much of the zoom steps a shot takes. A face that already fills the frame takes less.
-    touch:  the times at which the captions still reach the face, for the report.
+    The picture is not moved to suit the text. Each shot gets one fixed place, and the text moves instead.
+    The owner asked for this on 12 Nov 2026: "dont move anything just use face tracking to adjust the text".
+
+    center: the speaker's place across the source (0 left, 1 right), one fixed value for each shot.
+            A shot gets a second value only when the speaker moves too far to stay in one frame.
+    ay:     the height a zoom step holds still. It is the chin line, so the face stays put while the picture zooms.
+    drop:   how far the text moves down in each shot to clear the chin, as a part of the window height.
+    touch:  the times at which the text still reaches the face, because `max_drop` stopped it.
 
     zoom_at(t) is the zoom at a clip time. r is the scaled picture height over the window height.
     win is the window width as a part of the scaled picture width.
-    limit_at(t) is the top of the captions as a part of the window height, or None when nothing is shown.
+    limit_at(t) is the top of the text as a part of the window height, or None when nothing is shown.
     window(t) gives (left, right) across the source when the owner set the focus by hand."""
     bounds = [0.0] + [c for c in cuts if 0.15 < c < dur - 0.15] + [dur]
-    center, ays, z0s, amps, bad, checks, last_c = [], [], [], [], [], 0, 0.5
+    center, ays, drops, bad, checks, last_c = [], [], [], [], 0, 0.5
     for a, b in zip(bounds, bounds[1:]):
         at = round(max(0.0, a - 0.02), 3)
         shot = [(t, [f for f in fs if _plausible(f, aspect)]) for t, fs in samples if a + 0.08 <= t < b - 0.08]
@@ -141,72 +144,52 @@ def plan(samples: list, cuts: list, dur: float, zoom_at, aspect: float, r: float
         if not pts:
             center.append([at, last_c])
             ays.append([at, 0.3])
-            z0s.append([at, 1.0])
-            amps.append([at, 1.0])
+            drops.append([at, 0.0])
             continue
         raw = [p[1] for p in pts]
         xs = [_median(raw[max(0, i - 2):i + 3]) for i in range(len(raw))]
-        # Hold the frame still. Move it only when the speaker is about to leave the picture, and then
-        # in one short glide to where they stay next. A frame that follows every lean feels restless.
         face = _median([p[4] for p in pts])
-        closest = min(1.3, max(1.0, 0.6 * win / face)) if face else 1.0
-        slack = max(0.05, win / (2 * closest) - 0.35 * face)
-        mid = _median(xs)
-        if any(abs(x - mid) > slack for x in xs):
-            mid = _median([x for p, x in zip(pts, xs) if p[0] <= pts[0][0] + 2.0])
-        last_c = mid
-        center.append([at, last_c])
-        i = 0
-        while i < len(pts):
-            t = pts[i][0]
-            if abs(xs[i] - last_c) > slack and i + 1 < len(pts) and abs(xs[i + 1] - last_c) > slack:
-                new = _median([x for p, x in zip(pts, xs) if t <= p[0] <= t + 2.5])
-                if abs(new - last_c) > 0.04:
-                    center.append([max(t - 0.2, at + 0.01), new, 0.7])
-                    last_c = new
-                    while i < len(pts) and pts[i][0] < t + 0.7:
-                        i += 1
-                    continue
-            i += 1
-        cons = []
-        for t, _, tp, chin, _ in pts:
+        tight = win / 1.27                      # the window at the closest zoom step
+        order = sorted(xs)
+        lo_x, hi_x = order[int(0.05 * (len(order) - 1))], order[int(0.95 * (len(order) - 1) + 0.5)]
+        if hi_x - lo_x + face <= tight:
+            # The speaker stays inside one frame: put the middle of where they sit in the middle.
+            last_c = (lo_x + hi_x) / 2
+            center.append([at, last_c])
+        else:
+            # The speaker moves too far for one frame. Change the frame in one cut, never a slide.
+            slack = max(0.05, tight / 2 - 0.35 * face)
+            last_c = _median([x for p, x in zip(pts, xs) if p[0] <= pts[0][0] + 2.0])
+            center.append([at, last_c])
+            i = 0
+            while i < len(pts):
+                t = pts[i][0]
+                if abs(xs[i] - last_c) > slack and i + 1 < len(pts) and abs(xs[i + 1] - last_c) > slack:
+                    new = _median([x for p, x in zip(pts, xs) if t <= p[0] <= t + 2.5])
+                    if abs(new - last_c) > 0.04:
+                        center.append([round(t, 3), new])
+                        last_c = new
+                        while i < len(pts) and pts[i][0] < t + 1.0:
+                            i += 1
+                        continue
+                i += 1
+        ay = min(0.62, max(0.25, _median([p[3] for p in pts]) + 0.015))
+        ays.append([at, round(ay, 3)])
+        rows = []
+        for t, _, _, chin, _ in pts:
             c = limit_at(t)
             if c is not None and not any(s0 <= t <= s1 for s0, s1 in skip):
-                cons.append((t, tp, chin + 0.015, c - 0.012))
-        # A face may fill up to 60% of the frame width. Past that, the shot takes smaller zoom steps.
-        most = max(1.0, 0.6 * win / face) if face else 9.0
-
-        def amp_for(z0: float) -> float:
-            return round(min(1.0, max(0.15, (most / z0 - 1) / 0.27)), 3)
-
-        fits, fallback = None, None
-        for z0 in (1.0, 1.04, 1.08, 1.12, 1.16, 1.2, 1.25, 1.3):
-            lo, hi, ok, amp = 0.0, 1.0, True, amp_for(z0)
-            for t, tp, chin, c in cons:
-                rz = r * z0 * (1 + (zoom_at(t) - 1) * amp)
-                if rz <= 1.0005:
-                    ok = ok and chin * rz <= c
-                    continue
-                lo = max(lo, (chin * rz - c) / (rz - 1))
-                hi = min(hi, (tp * rz - top) / (rz - 1))
-            if ok and lo <= 1.0:
-                fallback = fallback or (z0, lo, hi)
-                if lo <= hi:
-                    fits = (z0, lo, hi)
-                    break
-        z0, lo, hi = fits or fallback or (1.3, 1.0, 1.0)
-        ay = min(1.0, max(0.0, min(max(0.3, lo), max(hi, lo))))
-        amp = amp_for(z0)
-        ays.append([at, round(ay, 3)])
-        z0s.append([at, z0])
-        amps.append([at, amp])
-        for t, tp, chin, c in cons:
+                rz = r * zoom_at(t)
+                rows.append((t, (chin + 0.015) * rz - (rz - 1) * ay + 0.012 - c))
+        need = max([n for _, n in rows] + [0.0])
+        drop = min(max_drop, need)
+        drops.append([at, round(drop, 4)])
+        for t, n in rows:
             checks += 1
-            rz = r * z0 * (1 + (zoom_at(t) - 1) * amp)
-            if chin * rz - (rz - 1) * ay > c + 0.012:
+            if n - drop > 0.012:
                 if bad and t - bad[-1][1] <= 0.6:
                     bad[-1][1] = t
                 else:
                     bad.append([t, t])
-    return {"center": [[round(v, 3) for v in s] for s in center], "ay": ays, "z0": z0s, "amp": amps,
+    return {"center": [[round(v, 3) for v in s] for s in center], "ay": ays, "drop": drops,
             "touch": [[round(a, 1), round(b, 1)] for a, b in bad], "checks": checks}

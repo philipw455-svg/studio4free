@@ -194,7 +194,7 @@ def design(name: str, size: tuple, title: str, style: dict, part_label: str = ""
         cue_y = int((vt + vh) / k) - 70
 
     elif name == "poster":
-        # A loud title in tall letters opens the clip, top left, then fades after 1.5 seconds.
+        # A loud title in tall letters opens the clip, top left, then fades after 2 seconds.
         # The yellow brand tag starts under the title, then moves to sit under the captions.
         _scrim(img, int(940 * k), int(1320 * k), 0, 90)
         _scrim(img, int(1320 * k), H, 90, 90)
@@ -222,7 +222,7 @@ def design(name: str, size: tuple, title: str, style: dict, part_label: str = ""
         dc.text((x, tag_h / 2), tag, font=bf, fill=(12, 12, 12, 255), anchor="lm")
         cap.update(y=1085, size=112, box=True, outline=16, shadow=0)
         cue_y = 950
-        hold = float(style.get("title_seconds", 1.5))
+        hold = float(style.get("title_seconds", 2.0))
         extras = {"intro": {"image": intro, "hold": hold, "fade": 0.4},
                   "tag": {"image": chip, "from": (int(70 * k), int(ty)), "to": (int((W - tag_w) / 2), int(1180 * k)),
                           "at": hold, "move": 0.5}}

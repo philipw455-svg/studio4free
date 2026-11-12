@@ -14,7 +14,7 @@ STRONG = {"fuck", "fucking", "fucked", "fucker", "motherfucker", "shit", "shitty
 DEFAULT_STYLE = {
     "aspect": "9:16",
     "overlay": "poster",      # a safe-zone look from overlays.py: banner-safe, glass, lower, wide or poster. "" for the first banner.
-    "title_seconds": 1.5,     # poster only: how long the opening title stays before it fades.
+    "title_seconds": 2.0,     # poster only: how long the opening title stays before it fades.
     "end_cue": "FOLLOW / SUBSCRIBE",  # shown in the last seconds of a clip that has no next part. "" for none.
     "layout": "banner",       # used when overlay is empty. banner: the first banner look. plain: no banner.
     "fit": "blur",            # plain layout only. blur: whole frame over a blurred copy. crop: fill the frame.
@@ -22,7 +22,7 @@ DEFAULT_STYLE = {
     "zoom": "Smooth",         # none | Smooth | Slow creep
     "zoom_steps": True,       # a new zoom level every sixth word and at each sentence. False: one gentle move.
     "cut_sound": True,        # a quiet whoosh on each cutaway
-    "face_aware": True,       # frame each shot on its largest face and keep the chin above the captions
+    "face_aware": True,       # give each shot one fixed frame on its largest face, and move the text below the chin
     "captions": True,
     "caption_words": 3,
     "caption_upper": True,
@@ -160,7 +160,9 @@ def make_overlay(path, size: tuple, title: str, style: dict, part_label: str = "
 
 
 def build_ass(style: dict, size: tuple, title: str, words: list, mutes: set, dur: float, banner: bool = False,
-              cue: str = "", look: dict | None = None) -> str:
+              cue: str = "", look: dict | None = None, drop_at=None) -> str:
+    """`drop_at(t)` gives how many pixels lower the captions and the closing line sit at a clip time."""
+    drop_at = drop_at or (lambda t: 0)
     W, H = size
     k = H / 1920
     c = (look or {}).get("cap") or {}
@@ -213,11 +215,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         txt = txt.upper()
                     parts.append(f"{{\\c{acc}}}{txt}{{\\c&HFFFFFF&}}" if j == i else txt)
                 pop = "{\\fscx108\\fscy108\\t(0,90,\\fscx100\\fscy100)}" if i == 0 else ""
-                ev.append(f"Dialogue: 3,{ass_time(t0)},{ass_time(t1)},Cap,,0,0,0,,{place}{pop}{' '.join(parts)}")
+                here = f"{{\\an5\\pos({W // 2},{cap_y + int(drop_at(t0))})}}" if banner else ""
+                ev.append(f"Dialogue: 3,{ass_time(t0)},{ass_time(t1)},Cap,,0,0,0,,{here}{pop}{' '.join(parts)}")
     if cue:
         t0 = max(0.0, dur - 2.6)
         ev.append(f"Dialogue: 4,{ass_time(t0)},{ass_time(dur)},Cap,,0,0,0,,"
-                  f"{{\\an5\\pos({W // 2},{cue_y})\\fs{int(cap * 0.5)}\\c{ass_colour(style['accent'])}\\fad(200,0)}}{clean(cue)}")
+                  f"{{\\an5\\pos({W // 2},{cue_y + int(drop_at(t0))})\\fs{int(cap * 0.5)}\\c{ass_colour(style['accent'])}\\fad(200,0)}}{clean(cue)}")
     return head + "\n".join(ev) + "\n"
 
 
@@ -236,6 +239,7 @@ def zoom_expr(kind: str, dur: float) -> str:
     return "1"
 
 
+TEXT_DROP = 80    # the most the text may move down to clear a chin, in pixels of a 1920 frame. It keeps the captions in the safe zone.
 ZOOM_LEVELS = [1.0, 1.13, 1.04, 1.19]
 ZOOM_MOVES = {"Smooth": 0.38, "Slow creep": 1.1}   # seconds each zoom step takes
 
@@ -256,8 +260,6 @@ def zoom_plan(words: list, dur: float, kind: str, stepped: bool):
         n += 1
         if i and (n >= 6 or re.search(r"[.?!]$", words[i - 1]["w"])):
             t = max(0.0, w["s"] - 0.05)
-            if t - last < 0.6 or dur - t < 1.0:
-                continue
             level, n, last = level + 1, 0, t
             keys.append((round(t, 2), ZOOM_LEVELS[level % 4] - ZOOM_LEVELS[(level - 1) % 4]))
     linear = kind == "Slow creep"
@@ -305,7 +307,7 @@ def cutaway_filters(d, cuts: list, first_input: int, region: tuple, base: str, o
             sys.exit(f"The cutaway file is missing: {c['file']}")
         inputs += ["-ss", f"{frm:.2f}", "-t", f"{secs + 0.2:.2f}", "-i", path]
         nxt = out if i == len(cuts) - 1 else f"ct{i}"
-        grow = f"(1+0.06*t/{secs:.2f})"
+        grow = f"(1.03+0.08*t/{secs:.2f})"   # the slow push of the owner's first clips
         parts.append(
             f"[{first_input + i}:v]fps=30,scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
             f"scale=w='trunc({w}*{grow}/2)*2':h='trunc({h}*{grow}/2)*2':eval=frame,crop={w}:{h},setsar=1,"
@@ -376,7 +378,6 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     if safe:
         from .overlays import design
         look = design(safe, (W, H), clip.get("title", ""), style, f"PART {part} OF {parts}" if multi else "", (sw, sh))
-    ass.write_text(build_ass(style, (W, H), clip.get("title", ""), words, mutes, dur, banner, cue, look), encoding="utf-8")
     (out_dir / f"{stem}.srt").write_text(build_srt(words, dur), encoding="utf-8")
 
     kind = clip.get("zoom", style.get("zoom", "none"))
@@ -389,22 +390,35 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
 
     def window(bw: int, bh2: int, w: int, h: int, top: int) -> str:
         """The speaker's part of the picture, as the filter that cuts it out. With the face model, each shot
-        is framed on its largest face and the chin is kept above the captions. `focus` on a clip sets the
-        place across by hand."""
+        gets one fixed frame on its largest face, and the text moves down where a chin sits low.
+        `focus` on a clip sets the place across by hand."""
         manual = clip.get("focus", style.get("focus"))
-        ay, zz, xoff = ("0.300" if stepped else "0.500"), z, None
+        ay, xoff = ("0.300" if stepped else "0.500"), None
         from . import faces
         if style.get("face_aware", True) and faces.available():
             c = (look or {}).get("cap") or {}
             k = H / 1920
             size = c.get("size", 144 if banner else 92) * k
             edge = c.get("outline", 9 if banner else 7) * k
-            cap_top = (c.get("y", 1320) * k if (banner or look) else H * 0.785 - size * 0.6) - size * 0.62 - edge
+            mid = c.get("y", 1320) * k if (banner or look) else H * 0.785 - size * 0.6
             cue_top = (look or {}).get("cue_y", 1555) * k - size * 0.31 - edge
-            shown = bool(style.get("captions", True))
+            # How tall is each caption? A caption that wraps onto two lines reaches higher than a short one.
+            from PIL import ImageFont
+            font = ImageFont.truetype(str(FONTS / (c.get("font", style["font"]).replace(" ", "-") + ".ttf")), int(size / 1.22))
+            rows = []
+            if style.get("captions", True):
+                groups = chunks(words, int(style.get("caption_words", 3)), int(c.get("limit", 10 if (banner or look) else 16)))
+                for g, grp in enumerate(groups):
+                    text = " ".join(x["w"] for x in grp)
+                    text = text.upper() if style.get("caption_upper", True) else text
+                    wide = font.getlength(text) + len(text) + 2 * edge
+                    lines = max(1, -(-int(wide) // int(W - 200 * k)))
+                    rows.append((grp[0]["s"], groups[g + 1][0]["s"] if g + 1 < len(groups) else dur, lines))
 
             def limit_at(t: float):
-                tops = ([cap_top] if shown else []) + ([cue_top] if cue and t >= dur - 2.7 else [])
+                tops = [mid - n * size / 2 - edge for a, b, n in rows if a - 0.1 <= t < b]
+                if cue and t >= dur - 2.7:
+                    tops.append(cue_top)
                 return (min(tops) - top) / h if tops else None
 
             def by_hand(t: float):
@@ -415,17 +429,18 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
             src = d / "source.mp4"
             plan = faces.plan(faces.detect(src, start, dur), faces.camera_cuts(src, start, dur), dur, zoom_at,
                               sw / sh, bh2 / h, w / bw, limit_at,
+                              (TEXT_DROP * k / h) if (banner or look) else 0.0,
                               [(float(x["at"]), float(x["at"]) + float(x.get("seconds", 1.15))) for x in cuts],
                               by_hand if manual is not None else None)
             framing.update(plan)
+            # The text moves in steps of 10 pixels, so a small change between two shots does not show.
+            framing["drop_px"] = [[row[0], min(TEXT_DROP * k, -(-row[1] * h // 10) * 10)] for row in plan["drop"]]
             ay = focus_expr(plan["ay"])
-            if any(row[1] != 1.0 for row in plan["z0"] + plan["amp"]):
-                zz = f"({focus_expr(plan['z0'])})*(1+(({z})-1)*({focus_expr(plan['amp'])}))"
             if manual is None:
-                xoff = f"clip(({focus_expr(plan['center'])})*{bw}*{zz}-{w / 2:.0f}\\,0\\,{bw}*{zz}-{w})"
+                xoff = f"clip(({focus_expr(plan['center'])})*{bw}*{z}-{w / 2:.0f}\\,0\\,{bw}*{z}-{w})"
         if xoff is None:
-            xoff = f"({bw}*{zz}-{w})*({focus_expr(manual if manual is not None else 0.5)})"
-        return zoomed(bw, bh2, zz, w, h, xoff, f"({bh2}*{zz}-{h})*({ay})")
+            xoff = f"({bw}*{z}-{w})*({focus_expr(manual if manual is not None else 0.5)})"
+        return zoomed(bw, bh2, z, w, h, xoff, f"({bh2}*{z}-{h})*({ay})")
 
     if look:
         png = out_dir / f"{stem}-overlay.png"
@@ -468,7 +483,9 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
             p = f"(clip((t-{g['at']})/{g['move']}\\,0\\,1))"
             e = f"({p}*{p}*(3-2*{p}))"
             (x0, y0), (x1, y1) = g["from"], g["to"]
-            video = (video[:-4] + f"[s{idx}];[s{idx}][{idx}:v]overlay=x='{x0}+({x1 - x0})*{e}':y='{y0}+({y1 - y0})*{e}':eval=frame[v0]")
+            # The tag rests under the captions, so it moves down with them.
+            rest = f"({y1}+({focus_expr(framing['drop_px'])}))" if framing.get("drop_px") else str(y1)
+            video = (video[:-4] + f"[s{idx}];[s{idx}][{idx}:v]overlay=x='{x0}+({x1 - x0})*{e}':y='{y0}+({rest}-{y0})*{e}':eval=frame[v0]")
     elif banner:
         png = out_dir / f"{stem}-overlay.png"
         make_overlay(png, (W, H), clip.get("title", ""), style, f"PART {part} OF {parts}" if multi else "")
@@ -489,6 +506,9 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
         video = (zoomed(W, fh, z, W, fh, f"({W}*{z}-{W})/2", f"({fh}*{z}-{fh})/2") + "[fg];"
                  f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=28:4,eq=brightness=-0.22:saturation=0.8[bg];"
                  f"[bg][fg]overlay=0:(H-h)/2,setsar=1[v0]")
+    drop_px = framing.get("drop_px")
+    ass.write_text(build_ass(style, (W, H), clip.get("title", ""), words, mutes, dur, banner, cue, look,
+                             (lambda t: steps_at(drop_px, t)) if drop_px else None), encoding="utf-8")
     if cuts:
         cut_in, chain = cutaway_filters(d, cuts, 1 + extra.count("-i"), region, "vraw", "vcut")
         extra += cut_in
@@ -522,7 +542,8 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
         tmp.unlink()
     return {"n": n, "file": f"clips/{out.name}", "srt": f"clips/{stem}.srt", "seconds": round(dur, 1),
             "title": clip.get("title", ""), "muted": len(mutes), "mb": round(out.stat().st_size / 1048576, 1),
-            **({"faces": {"checks": framing["checks"], "touch": framing["touch"]}} if framing else {}),
+            **({"faces": {"checks": framing["checks"], "touch": framing["touch"],
+                          "text_drop": sorted({int(r[1]) for r in framing.get("drop_px", [])})}} if framing else {}),
             **({"series": clip.get("series", ""), "part": part, "parts": parts} if multi else {})}
 
 
