@@ -13,9 +13,27 @@ YouTube does this to cloud servers. Do not try to get around the check.
 Run this same fetch step on a home computer, or put the video file in the job folder as source.mp4."""
 
 
+def channel_of(link: str) -> dict:
+    """Ask YouTube's public oEmbed service who published a video. This works from cloud servers too."""
+    import json
+    import urllib.parse
+    try:
+        url = "https://www.youtube.com/oembed?format=json&url=" + urllib.parse.quote(link, safe="")
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "clip-studio/1.0"}), timeout=20) as r:
+            j = json.loads(r.read())
+        handle = j.get("author_url", "").replace("https://www.", "").replace("https://", "")
+        return {"channel": j.get("author_name", ""), "credit": handle, "videoTitle": j.get("title", "")}
+    except Exception:
+        return {}
+
+
 def fetch(job: str, source: str) -> Path:
     d = job_dir(job)
     out = d / "source.mp4"
+    who = channel_of(source) if any(h in source for h in YT_HOSTS) else {}
+    if who:
+        write_json(d / "channel.json", who)
+        print(f"Source channel: {who['channel']} ({who['credit']})")
     if any(h in source for h in YT_HOSTS):
         if not shutil.which("yt-dlp"):
             sys.exit("yt-dlp is missing. Run: pip install -r requirements.txt")
@@ -42,6 +60,6 @@ def fetch(job: str, source: str) -> Path:
         else:
             run(["ffmpeg", "-y", "-i", src, "-c:v", "libx264", "-crf", "18", "-c:a", "aac", out])
     info = probe(out)
-    write_json(d / "source.json", {"source": source, **info})
+    write_json(d / "source.json", {"source": source, **who, **info})
     print(f"Saved {out} ({info['width']}x{info['height']}, {info['duration']:.0f} seconds)")
     return out

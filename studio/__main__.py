@@ -39,7 +39,7 @@ def main():
 
     a = sub.add_parser("post", help="create the Buffer posts from posting.json")
     a.add_argument("--job", required=True)
-    a.add_argument("--services", default="youtube,tiktok")
+    a.add_argument("--services", default="youtube,instagram")
     a.add_argument("--draft", action="store_true", help="save as drafts, not scheduled posts")
     a.add_argument("--only", default="")
 

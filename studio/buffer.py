@@ -59,6 +59,8 @@ def create_post(channel: dict, text: str, video_url: str, due_at: str, title: st
         inp["saveToDraft"] = True
     if channel["service"] == "youtube":
         inp["metadata"] = {"youtube": {"title": title[:100], "categoryId": "22"}}
+    elif channel["service"] == "instagram":
+        inp["metadata"] = {"instagram": {"type": "reel", "shouldShareToFeed": True}}
     res = gql(CREATE, {"input": inp})["createPost"]
     if res.get("message"):
         raise RuntimeError(res["message"])
