@@ -15,6 +15,7 @@ DEFAULT_STYLE = {
     "aspect": "9:16",
     "overlay": "poster",      # a safe-zone look from overlays.py: banner-safe, glass, lower, wide or poster. "" for the first banner.
     "title_seconds": 1.5,     # poster only: how long the opening title stays before it fades.
+    "end_cue": "FOLLOW / SUBSCRIBE",  # shown in the last seconds of a clip that has no next part. "" for none.
     "layout": "banner",       # used when overlay is empty. banner: the first banner look. plain: no banner.
     "fit": "blur",            # plain layout only. blur: whole frame over a blurred copy. crop: fill the frame.
     "focus": 0.5,             # crop only: 0 is the left edge, 1 is the right edge.
@@ -259,7 +260,8 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     banner = not safe and style.get("layout", "banner") == "banner" and H > W
     part, parts = int(clip.get("part") or 0), int(clip.get("parts") or 0)
     multi = parts > 1 and 1 <= part <= parts
-    cue = f"FOLLOW FOR PART {part + 1}" if multi and part < parts else ""
+    # The closing line: only a story with a next part asks for that part. Every other clip asks for a follow.
+    cue = f"FOLLOW FOR PART {part + 1}" if multi and part < parts else str(style.get("end_cue", "FOLLOW / SUBSCRIBE"))
     sw, sh = src_info["width"], src_info["height"]
     look = None
     if safe:
