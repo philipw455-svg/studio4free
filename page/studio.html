@@ -67,7 +67,7 @@ button.card{text-align:left;width:100%}
 .field{display:flex;flex-direction:column;gap:7px;min-width:0}
 .field>label,.field>.lab{font-weight:600;font-size:15.5px}
 .hint{font-size:13.5px;color:var(--muted)}
-input[type=text],input[type=url],input[type=datetime-local],textarea,select{width:100%;min-width:0;min-height:48px;background:rgba(255,255,255,.13);border:1px solid var(--edge);border-radius:18px;padding:11px 16px;font-size:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+input[type=text],input[type=url],input[type=datetime-local],input[type=time],textarea,select{width:100%;min-width:0;min-height:48px;background:rgba(255,255,255,.13);border:1px solid var(--edge);border-radius:18px;padding:11px 16px;font-size:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
 input::placeholder,textarea::placeholder{color:var(--faint)}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--ink);background:rgba(255,255,255,.2)}
 textarea{min-height:92px;resize:vertical;border-radius:20px}
@@ -259,7 +259,8 @@ function vNew(){
   const link = h('input', {type:'url', id:'f-link', inputmode:'url', placeholder:'https://youtu.be/…', value:f.link || '', oninput:e => { f.link = e.target.value; }});
   const name = h('input', {type:'text', id:'f-name', value:f.name || '', oninput:e => { f.name = e.target.value; }});
   const kids = [h('h2', null, clips ? 'New clipping job' : 'New edit job'),
-    field('YouTube link', 'Only YouTube links work here.', link, 'f-link'), field('Job name', 'A short name, such as the guest or the show.', name, 'f-name')];
+    field('YouTube link', 'Only YouTube links work here.', link, 'f-link'), field('Job name', 'A short name, such as the guest.', name, 'f-name'),
+    field('Podcast', 'The show this video comes from. Its clips fill the post times of that show.', h('div', {class:'field'}, h('input', {type:'text', id:'f-show', value:f.show || '', oninput:e => { f.show = e.target.value; }}), shows().length ? chips(shows(), f.show, false, (o, on) => { f.show = on ? o : ''; document.getElementById('f-show').value = f.show; }) : null), 'f-show')];
   if (clips) kids.push(field('How many clips?', null, chips(COUNTS, f.count, false, (o, on) => { f.count = on ? o : ''; })),
     field('How long is each clip?', null, chips(LENS, f.len, false, (o, on) => { f.len = on ? o : ''; })),
     field('Long stories', 'A story that needs more time becomes Part 1, Part 2 and so on. Part 1 always posts first.', chips(['Split long stories into parts','Short clips only'], f.parts, false, (o, on) => { f.parts = on ? o : 'Short clips only'; })),
@@ -274,7 +275,7 @@ function vNew(){
     h('button', {class:'btn pri wide', type:'button', onclick:async e => { const b = e.currentTarget;
       if (!ytOK(f.link)){ msg.textContent = 'Paste a full YouTube link first. It starts with https://youtu.be/ or https://www.youtube.com/.'; return; }
       b.disabled = true; const s = S.set;
-      const doc = {kind:f.kind, name:(f.name || '').trim() || 'Untitled', link:f.link.trim(), status:'sent', statusNote:'', shortlist:[], clips:[],
+      const doc = {kind:f.kind, name:(f.name || '').trim() || 'Untitled', show:(f.show || '').trim(), link:f.link.trim(), status:'sent', statusNote:'', shortlist:[], clips:[],
         ask:clips ? {count:f.count, len:f.len, parts:f.parts, kinds:f.kinds, want:f.what || ''} : {what:f.what || '', style:f.estyle, edits:f.edits, target:f.target || ''},
         look:{overlay:f.overlay || s.overlay, fit:s.fit, zoom:s.zoom, captions:s.captions, language:s.language, brand:s.brand, descTail:s.descTail}};
       const id = await addJob(doc); if (!id){ b.disabled = false; return; }
@@ -288,6 +289,7 @@ function vJob(){
   const act = (label, status, text, pri) => h('button', {class:'btn wide' + (pri ? ' pri' : ''), type:'button', onclick:async e => { const b = e.currentTarget; b.disabled = true; const r = await tell(b, text); await saveJob(id, {status}); j.sentNote = told(r); render(); }}, label);
   out.push(h('div', {class:'sect'}, h('div', {class:'row'}, h('span', {class:'pill'}, j.kind === 'edit' ? 'Edit' : 'Clips'), h('span', {class:'pill ' + st[1]}, st[0])), h('h2', null, j.name || 'Untitled'),
     h('p', {class:'small muted', style:'overflow-wrap:anywhere'}, j.link ? h('a', {href:j.link, target:'_blank', rel:'noopener'}, j.link) : 'No link'),
+    field('Podcast', 'Clips from this job fill the post times of this show: ' + slotTimes(j.show).join(', ') + '.', h('input', {type:'text', id:'f-jshow', value:j.show || '', onchange:e => { saveJob(id, {show:e.target.value.trim()}).then(render); }}), 'f-jshow'),
     j.statusNote ? h('p', {class:'note'}, String(j.statusNote)) : null, j.sentNote ? h('p', {class:'note', role:'status'}, j.sentNote) : null,
     j.status === 'sent' ? act('Send to Claude Code again', 'sent', 'Studio4Free: run the job "' + j.name + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.') : null));
   const sl = j.shortlist || [], clips = (j.clips || []).slice().sort((a, b) => (a.publishAt ? new Date(a.publishAt) : 9e15) - (b.publishAt ? new Date(b.publishAt) : 9e15) || a.n - b.n);
@@ -338,30 +340,56 @@ function partIssues(clips){
     for (let i = 1; i < ps.length; i++){ const a = ps[i - 1], b = ps[i]; if (b.publishAt && (!a.publishAt || new Date(a.publishAt) >= new Date(b.publishAt))) out.push('Part ' + b.part + ' of "' + (b.title || s) + '" posts before part ' + a.part + '. Give part ' + a.part + ' the earlier time.'); } }
   return out;
 }
+const slots = () => { const s = S.set.slots; return (Array.isArray(s) && s.length ? s : (S.set.times || DEF.times).map(t => ({time:t, show:''}))).filter(x => /^\d\d:\d\d$/.test(x.time || '')).map(x => ({time:x.time, show:String(x.show || '').trim()})).sort((a, b) => a.time.localeCompare(b.time)); };
+const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+// A job's clips go into the post times of its own podcast. With no match, they use the times that have no podcast.
+function slotTimes(show){ const all = slots(); let m = String(show || '').trim() ? all.filter(x => same(x.show, show)) : []; if (!m.length) m = all.filter(x => !x.show); if (!m.length) m = all; return [...new Set(m.map(x => x.time))]; }
+const shows = () => [...new Set([...slots().map(x => x.show), ...[...S.jobs.values()].map(j => String(j.show || '').trim())].filter(Boolean))];
+function slotEditor(){
+  const s = S.set, sl = slots();
+  const keep = () => { s.slots = sl.filter(x => /^\d\d:\d\d$/.test(x.time)); s.times = [...new Set(s.slots.map(x => x.time))].sort(); saveSet(); };
+  return h('div', {class:'field'}, h('div', {class:'lab'}, 'Post times each day'), h('p', {class:'hint'}, 'Each post time can belong to one podcast. Clips from that podcast fill that time. Leave the podcast empty to accept any clip.'),
+    sl.map((x, i) => h('div', {class:'row'},
+      h('input', {type:'time', id:'f-sl-t' + i, 'aria-label':'Post time ' + (i + 1), value:x.time, style:'flex:0 0 132px;width:auto', onchange:e => { x.time = e.target.value; keep(); }}),
+      h('input', {type:'text', id:'f-sl-s' + i, 'aria-label':'Podcast for post time ' + (i + 1), placeholder:'Any podcast', value:x.show, style:'flex:1 1 150px;width:auto', onchange:e => { x.show = e.target.value.trim(); keep(); }}),
+      h('button', {class:'btn sm warn', type:'button', 'aria-label':'Remove post time ' + x.time, onclick:() => { sl.splice(i, 1); keep(); render(); }}, 'Remove'))),
+    h('div', {class:'row'}, h('button', {class:'btn sm', type:'button', disabled:sl.length >= 8, onclick:() => { let hh = 9; while (sl.some(x => x.time === String(hh).padStart(2, '0') + ':00') && hh < 23) hh++; sl.push({time:String(hh).padStart(2, '0') + ':00', show:''}); keep(); render(); }}, 'Add a post time'), h('span', {class:'hint'}, sl.length + (sl.length === 1 ? ' post a day' : ' posts a day'))));
+}
+function coverage(){
+  const all = allClips(), today = todayKey();
+  return h('div', {class:'card'}, h('div', {class:'label'}, 'Post times · ' + slots().length + ' a day'), slots().map(sl => {
+    const mine = all.filter(x => hm(x.c.publishAt) === sl.time && dayKey(x.c.publishAt) >= today && !/publish/i.test(x.c.status || ''));
+    const days = new Set(mine.map(x => dayKey(x.c.publishAt))); let d = new Date(today + 'T12:00:00Z'), last = '';
+    while (days.has(d.toISOString().slice(0, 10))){ last = d.toISOString().slice(0, 10); d = new Date(d.getTime() + 864e5); }
+    const drafts = mine.filter(x => /draft/i.test(x.c.status || '') && !/schedul/i.test(x.c.status || '')).length;
+    return h('div', {class:'pick'}, h('div', null, h('b', null, sl.time + ' · ' + (sl.show || 'Any podcast')),
+        h('p', {class:'small muted'}, !mine.length ? 'No clips waiting.' : (last ? 'Filled every day through ' + dayName(last) + '.' : 'Nothing for today. ' + mine.length + ' clips wait on later days.') + (drafts ? ' ' + drafts + ' of ' + mine.length + ' are still drafts.' : ''))),
+      h('span', {class:'pill ' + (!mine.length ? 'bad' : drafts ? 'wait' : 'ok')}, mine.length + (mine.length === 1 ? ' clip' : ' clips'))); }));
+}
 function fillSlots(j){
-  const taken = new Set(allClips().map(x => wall(x.c.publishAt))), times = (S.set.times || DEF.times).slice().sort();
+  const taken = new Set(allClips().map(x => wall(x.c.publishAt))), times = slotTimes(j.show).sort();
   let day = new Date(todayKey() + 'T12:00:00Z'); const next = () => { for (;;){ day = new Date(day.getTime() + 864e5); const key = day.toISOString().slice(0, 10); for (const t of times){ const w = key + 'T' + t; if (!taken.has(w)){ taken.add(w); day = new Date(day.getTime() - 864e5); return w; } } } };
   for (const c of (j.clips || []).slice().sort((a, b) => a.n - b.n)) if (!c.publishAt) c.publishAt = wallToISO(next());
 }
 function vSchedule(){
   const all = allClips(), today = todayKey(), byDay = new Map();
   for (const x of all){ const k = dayKey(x.c.publishAt); if (!S.showPast && k < today) continue; (byDay.get(k) || byDay.set(k, []).get(k)).push(x); }
-  const past = all.filter(x => dayKey(x.c.publishAt) < today).length, times = (S.set.times || DEF.times).slice().sort();
+  const past = all.filter(x => dayKey(x.c.publishAt) < today).length, times = slots();
   const keys = new Set(byDay.keys()); for (let i = 0; i < 7; i++) keys.add(new Date(new Date(today + 'T12:00:00Z').getTime() + i * 864e5).toISOString().slice(0, 10));
-  const days = [...keys].sort().map(k => { const rows = (byDay.get(k) || []).map(x => ({t:hm(x.c.publishAt), x})); if (k >= today) for (const t of times) if (!rows.some(r => r.t === t)) rows.push({t, x:null});
+  const days = [...keys].sort().map(k => { const rows = (byDay.get(k) || []).map(x => ({t:hm(x.c.publishAt), x})); if (k >= today) for (const sl of times) if (!rows.some(r => r.t === sl.time)) rows.push({t:sl.time, x:null, show:sl.show});
     rows.sort((a, b) => a.t.localeCompare(b.t));
     return h('div', {class:'day'}, h('h3', null, dayName(k), k === today ? ' · today' : ''), rows.map(r => r.x ? h('div', {class:'slot'}, h('span', {class:'t'}, r.t),
         h('div', {class:'b'}, h('b', null, String(r.x.c.title || 'Clip ' + r.x.c.n) + (r.x.c.parts > 1 ? ' · Part ' + r.x.c.part + ' of ' + r.x.c.parts : '')), h('div', {class:'row'}, h('span', {class:'pill ' + pillFor(r.x.c.status)}, /publish/i.test(r.x.c.status || '') ? 'Published' : /schedul/i.test(r.x.c.status || '') ? 'Scheduled' : /draft/i.test(r.x.c.status || '') ? 'Draft' : 'Planned'),
           h('button', {class:'btn sm', type:'button', onclick:() => go('job', r.x.id)}, r.x.j.name || 'Job'), hasVid(r.x.c) ? h('button', {class:'btn sm', type:'button', onclick:() => player(r.x)}, 'Watch') : null), r.x.c.status ? h('span', {class:'st'}, String(r.x.c.status)) : null))
-      : h('div', {class:'slot open'}, h('span', {class:'t'}, r.t), h('div', {class:'b'}, 'Open')))); });
+      : h('div', {class:'slot open'}, h('span', {class:'t'}, r.t), h('div', {class:'b'}, 'Open' + (r.show ? ' · ' + r.show : ''))))); });
   return [h('div', {class:'sect'}, h('h2', null, 'Schedule'), h('p', {class:'muted'}, 'Every clip with a publish time, in ' + S.set.tz.replace(/_/g, ' ') + ' time. Open rows are post times with no clip yet.'),
-    past ? h('button', {class:'btn sm', type:'button', style:'align-self:flex-start', onclick:() => { S.showPast = !S.showPast; render(); }}, S.showPast ? 'Hide past days' : 'Show ' + past + ' past clips') : null), days];
+    past ? h('button', {class:'btn sm', type:'button', style:'align-self:flex-start', onclick:() => { S.showPast = !S.showPast; render(); }}, S.showPast ? 'Hide past days' : 'Show ' + past + ' past clips') : null), coverage(), days];
 }
 function vSetup(){
   const s = S.set, set = (k, v) => { s[k] = v; saveSet(); };
   const txt = (k, label, hint, area) => field(label, hint, h(area ? 'textarea' : 'input', {type:area ? null : 'text', id:'f-s-' + k, value:Array.isArray(s[k]) ? s[k].join(', ') : s[k] || '', onchange:e => { set(k, k === 'times' ? e.target.value.split(',').map(x => x.trim()).filter(x => /^\d\d:\d\d$/.test(x)) : e.target.value); if (k === 'times') e.target.value = s.times.join(', '); }}), 'f-s-' + k);
   return [h('div', {class:'sect'}, h('h2', null, 'Setup'), h('p', {class:'muted'}, 'Your usual answers. Every new job starts from these.')),
-    h('div', {class:'card'}, h('div', {class:'label'}, 'Posting'), txt('times', 'Post times each day', 'Use 24-hour times with commas, such as 12:15, 17:00.'),
+    h('div', {class:'card'}, h('div', {class:'label'}, 'Posting'), slotEditor(),
       txt('tz', 'Time zone', 'A zone name such as America/Chicago.'), field('Post to', null, chips(['YouTube','TikTok','Instagram'], s.services, true, (o, on) => { const x = new Set(s.services); on ? x.add(o) : x.delete(o); set('services', [...x]); })),
       txt('descTail', 'Line added to every description', 'For example a link to your app.', true)),
     h('div', {class:'card'}, h('div', {class:'label'}, 'Look of each clip'),
