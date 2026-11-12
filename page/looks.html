@@ -67,11 +67,23 @@ h1,h2,p{margin:0}
 /* E. Print room: warm paper and a serif */
 .lk-e{--b:#f3ece0;--c:#fbf7ef;--s:#e9dfcd;--i:#2a2118;--m:#75685a;--l:#d9ccb6;--a:#1e5a46;--ai:#fbf7ef;--ok:#1e5a46;--okb:#d6e6da;--w:#8c4a12;--wb:#f2dcc0;
   --r:10px;--rb:10px;--rp:5px;--bd:1px solid #d9ccb6;--sh:none;--fd:"Fraunces",Georgia,serif;--fb:"Figtree",Arial,sans-serif;--fm:"Spline Sans Mono",monospace;--wd:700;--ls:-.01em;--tt:none;--tbb:#fbf7ef;--ton:#1e5a46;--toni:#fbf7ef}
+/* F. Liquid glass: clear panels with bright edges over a colour wash */
+.lk-f{--b:radial-gradient(120% 70% at 12% 8%,#ff8a5c 0%,transparent 55%),radial-gradient(110% 70% at 95% 30%,#b25cff 0%,transparent 60%),radial-gradient(120% 80% at 20% 100%,#2f7bff 0%,transparent 60%),linear-gradient(160deg,#3a1d6e,#0d2a66);
+  --c:rgba(255,255,255,.16);--s:rgba(255,255,255,.18);--i:#ffffff;--m:rgba(255,255,255,.78);--l:rgba(255,255,255,.34);--a:rgba(255,255,255,.92);--ai:#2a1a5e;--ok:#eafff5;--okb:rgba(70,230,160,.38);--w:#fff6dc;--wb:rgba(255,190,70,.42);
+  --r:24px;--rb:999px;--rp:999px;--bd:1px solid rgba(255,255,255,.38);--sh:inset 0 1px 0 rgba(255,255,255,.65),inset 0 -1px 0 rgba(255,255,255,.12),0 10px 28px rgba(10,8,40,.22);
+  --fd:-apple-system,"SF Pro Display","Inter",Arial,sans-serif;--fb:-apple-system,"SF Pro Text","Inter",Arial,sans-serif;--fm:-apple-system,"Inter",Arial,sans-serif;--wd:700;--ls:-.02em;--tt:none;--tbb:rgba(255,255,255,.2);--ton:rgba(255,255,255,.9);--toni:#2a1a5e}
+.lk-f .cd,.lk-f .sl,.lk-f .bt,.lk-f .tb{-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%)}
+.lk-f .bt{box-shadow:var(--sh)}
+.lk-f .sl.o{-webkit-backdrop-filter:none;backdrop-filter:none}
+.lk-f .pl{background:rgba(255,255,255,.2);color:#fff;font-weight:600;letter-spacing:.03em}
+.lk-f .pl.ok{background:var(--okb)} .lk-f .pl.w{background:var(--wb)}
+.lk-f .tb{margin:0 14px 14px;padding:5px;border-radius:999px;border:1px solid rgba(255,255,255,.4);box-shadow:var(--sh)}
+.lk-f .tb span{min-height:36px}
 </style>
 
 <div class="wrap">
   <div class="head">
-    <h1>Five looks for Studio4Free</h1>
+    <h1>Six looks for Studio4Free</h1>
     <p>Each look shows the Jobs screen and the Schedule screen with your real clips. The buttons and the flow stay the same in every look. Tell me the letter you want.</p>
   </div>
   <div id="looks"></div>
@@ -80,6 +92,7 @@ h1,h2,p{margin:0}
 <script>
 (() => {
 const LOOKS = [
+  ['f','F','Liquid glass','Clear glass panels that float over a colourful backdrop, with bright edges and a floating tab bar. Close to the newest iPhone style.'],
   ['a','A','Plum','The look the page has now. Soft lilac, a pink accent and rounded cards. Friendly and calm.'],
   ['b','B','Edit bay','Dark, like video editing software. An amber accent, square corners and timecode type. Serious and focused.'],
   ['c','C','Poster','Loud capital headings, black outlines and hard shadows. A bright blue accent. Bold and playful.'],
