@@ -81,3 +81,4 @@ Render with ffmpeg, upload the result as one clip, and set `status: review`.
 - Never commit `jobs/`, videos, keys or tokens.
 - Publish page changes from `page/studio.html` to the page URL above, so the link stays the same.
 - The older page, Video Brief Studio, still holds the first 56 renders. Do not change it.
+- The page uses one committed look: liquid glass, the Outfit font, cards in a stack, and a clip preview row on the Jobs screen. Keep that look when you change the page.
