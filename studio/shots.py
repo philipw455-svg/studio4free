@@ -15,7 +15,7 @@ def camera_cuts(source, start: float, dur: float, limit: float = 0.25) -> list:
 
 
 def shots(job: str, only: list | None = None) -> None:
-    """Print the camera cuts of each clip and save a sheet with one frame per shot, ruled every tenth of the width.
+    """Print the camera cuts of each clip and save a sheet with one frame per shot, ruled every tenth of the width and of the height.
     Read where the speaker sits from the sheet, then write `focus` steps on the clip in clips.json.
     A speaker at x of the width needs focus (x - 0.158) / 0.684 on a 16:9 source that fills a 9:16 frame."""
     d = job_dir(job)
@@ -30,7 +30,7 @@ def shots(job: str, only: list | None = None) -> None:
         inputs, labels = [], []
         for i, (a, b) in enumerate(zip(bounds, bounds[1:])):
             inputs += ["-ss", f"{start + (a + b) / 2:.3f}", "-i", str(d / "source.mp4")]
-            labels.append(f"[{i}:v]trim=end_frame=1,scale=480:-2,drawgrid=w=48:h=0:t=1:c=yellow@0.7,"
+            labels.append(f"[{i}:v]trim=end_frame=1,scale=480:-2,drawgrid=w=48:h=27:t=1:c=yellow@0.55,"
                           f"drawtext=text='{a:.2f}':x=6:y=6:fontsize=22:fontcolor=white:box=1:boxcolor=black[s{i}]")
         cols = min(5, len(labels))
         sheet = out_dir / f"clip{n:02d}.jpg"
