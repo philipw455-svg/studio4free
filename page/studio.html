@@ -1,0 +1,341 @@
+<title>Studio4Free</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,700;112,800&family=Figtree:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a phone-first cutting desk. One column, a tab bar pinned to the thumb, a time rail for the schedule. */
+:root{
+  --bg:#f2eff7; --card:#ffffff; --sunk:#e8e3f1; --ink:#1d1630; --muted:#665d7d; --line:#dcd5e8;
+  --accent:#d92662; --accent-ink:#ffffff; --tint:#fbe3eb;
+  --ok:#0f7a5c; --ok-bg:#d9f2e8; --wait:#8a5a00; --wait-bg:#fbecc8; --info:#3a4fc4; --info-bg:#e1e5fb; --stage:#120e1c; --stage-ink:#e9e4f5;
+  --display:"Archivo","Arial Narrow",Arial,sans-serif; --body:"Figtree","Helvetica Neue",Arial,sans-serif; --mono:"Spline Sans Mono",ui-monospace,Menlo,monospace;
+  --r:18px; --tab:64px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#120e1c; --card:#1d1730; --sunk:#271f3f; --ink:#f1edfa; --muted:#a69dbf; --line:#322a4d;
+  --accent:#ff5c8d; --accent-ink:#1a0710; --tint:#3a1730;
+  --ok:#5fd6ae; --ok-bg:#12382d; --wait:#f3c463; --wait-bg:#3b2d0c; --info:#9aa8ff; --info-bg:#1f2550; --stage:#08060e; --stage-ink:#d9d3ea; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#120e1c; --card:#1d1730; --sunk:#271f3f; --ink:#f1edfa; --muted:#a69dbf; --line:#322a4d;
+  --accent:#ff5c8d; --accent-ink:#1a0710; --tint:#3a1730;
+  --ok:#5fd6ae; --ok-bg:#12382d; --wait:#f3c463; --wait-bg:#3b2d0c; --info:#9aa8ff; --info-bg:#1f2550; --stage:#08060e; --stage-ink:#d9d3ea; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--body);-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 calc(var(--tab) + 28px + env(safe-area-inset-bottom,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:31;background:var(--bg)}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+h1,h2{font-family:var(--display);font-stretch:112%;letter-spacing:-.01em;line-height:1.1;text-wrap:balance}
+a{color:var(--accent)}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:10px;padding-block:12px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.top h1{font-size:21px;font-weight:800;flex:1;min-width:0}
+.top h1 i{font-style:normal;color:var(--accent)}
+.save{font-size:12.5px;color:var(--muted)}
+.back{border:0;background:var(--sunk);border-radius:999px;min-height:40px;padding:0 14px;font-weight:600}
+
+.btn{border:0;background:var(--sunk);border-radius:14px;min-height:48px;padding:0 18px;font-weight:700;font-size:16px;transition:transform .08s}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:var(--accent);color:var(--accent-ink)}
+.btn.wide{width:100%}
+.btn.sm{min-height:40px;padding:0 14px;font-size:14.5px;border-radius:12px}
+.btn.warn{color:var(--accent)}
+.btn[disabled]{opacity:.45;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row>.grow{flex:1 1 140px;min-width:0}
+
+.card{background:var(--card);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+button.card{border:0;text-align:left;width:100%}
+.card h3{font:700 18px/1.25 var(--body);overflow-wrap:anywhere}
+.sect{display:flex;flex-direction:column;gap:12px}
+.sect>h2{font-size:26px;font-weight:800}
+.label{font:500 11.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pill{display:inline-block;font:500 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:6px 9px;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.wait{background:var(--wait-bg);color:var(--wait)}
+.pill.info{background:var(--info-bg);color:var(--info)}
+.pill.hot{background:var(--tint);color:var(--accent)}
+.note{background:var(--tint);border-radius:14px;padding:12px 14px;font-size:14.5px}
+.empty{border:1.5px dashed var(--line);border-radius:var(--r);padding:22px 18px;color:var(--muted)}
+.empty b{color:var(--ink)}
+
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field>label,.field>.lab{font-weight:700;font-size:15.5px}
+.hint{font-size:13.5px;color:var(--muted)}
+input[type=text],input[type=url],input[type=datetime-local],textarea,select{width:100%;min-height:48px;background:var(--sunk);border:1.5px solid transparent;border-radius:14px;padding:11px 14px;font-size:16px}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+textarea{min-height:92px;resize:vertical}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid transparent;background:var(--sunk);border-radius:999px;min-height:42px;padding:0 15px;font-weight:600;font-size:15px}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+details{background:var(--sunk);border-radius:14px;padding:12px 14px}
+details>summary{font-weight:700;cursor:pointer}
+details>div{display:flex;flex-direction:column;gap:14px;padding-top:14px}
+details input[type=text],details select,details textarea{background:var(--card)}
+
+/* shortlist and clips */
+.pick{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start;padding-block:12px;border-top:1px solid var(--line)}
+.pick:first-of-type{border-top:0}
+.pick b{overflow-wrap:anywhere}
+.pick .tcode{grid-column:1/-1;font-size:12.5px;color:var(--muted)}
+.clip{display:grid;grid-template-columns:104px minmax(0,1fr);gap:14px;align-items:start}
+.clip video,.clip .ph{width:104px;aspect-ratio:9/16;border-radius:12px;background:var(--stage);object-fit:cover;display:block}
+.clip .ph{display:grid;place-items:center;color:var(--stage-ink);font:500 11px var(--mono);text-align:center;padding:6px}
+.clip .side{display:flex;flex-direction:column;gap:9px;min-width:0}
+
+/* schedule rail */
+.day{display:flex;flex-direction:column;gap:8px}
+.day>h3{font:700 15px var(--body);position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px);background:var(--bg);padding-block:6px;z-index:5}
+.slot{display:grid;grid-template-columns:58px minmax(0,1fr);gap:12px;align-items:start;background:var(--card);border-radius:14px;padding:12px 14px}
+.slot.open{background:transparent;border:1.5px dashed var(--line);color:var(--muted)}
+.slot .t{font:500 14px var(--mono);font-variant-numeric:tabular-nums;padding-top:2px}
+.slot .b{display:flex;flex-direction:column;gap:6px;min-width:0}
+.slot .b b{overflow-wrap:anywhere;line-height:1.3}
+.slot .st{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+
+/* tab bar */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:center;gap:6px;
+  padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.tabs button{flex:1 1 0;max-width:200px;border:0;background:transparent;border-radius:14px;min-height:48px;font-weight:700;font-size:14.5px;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.tabs button[aria-current="page"]{background:var(--tint);color:var(--accent)}
+.tabs svg{width:22px;height:22px}
+@media (prefers-reduced-motion:reduce){ .btn{transition:none} }
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <button class="back" id="back" type="button" hidden>Back</button>
+    <h1>Studio<i>4</i>Free</h1>
+    <span class="save" id="save" role="status"></span>
+  </div>
+  <div id="app" class="sect"><p class="muted">Loading your studio…</p></div>
+</div>
+<nav class="tabs" aria-label="Sections">
+  <button type="button" data-v="jobs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="14" width="5" height="6" rx="1.5"/><rect x="10" y="14" width="5" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>Jobs</button>
+  <button type="button" data-v="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Schedule</button>
+  <button type="button" data-v="setup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Setup</button>
+</nav>
+
+<script>
+(() => {
+'use strict';
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs){ const v = attrs[k]; if (v == null || v === false) continue;
+    if (k === 'class') e.className = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k === 'value') e.value = v; else e.setAttribute(k, v === true ? '' : v); }
+  for (const kid of kids.flat(3)){ if (kid == null || kid === false) continue; e.append(kid.nodeType ? kid : document.createTextNode(String(kid))); }
+  return e;
+}
+const DEF = { times:['12:15','17:00'], tz:'America/Chicago', services:['YouTube','TikTok'], brand:'', descTail:'',
+  count:'10', len:'20 to 40 seconds', kinds:['Strong opinions','Funny moments','Emotional moments'], fit:'Whole frame on a blurred copy', zoom:'Smooth', captions:'Yes', language:'Mute it' };
+const COUNTS = ['3','5','10','20','As many as are good'];
+const LENS = ['Under 20 seconds','20 to 40 seconds','40 to 60 seconds','Whatever the moment needs'];
+const KINDS = ['Strong opinions','Funny moments','Stories','Advice and tips','Emotional moments','Surprising facts','Disagreements','Quotable one-liners'];
+const ESTYLES = ['Quick-cut talking clip','Raw funny moments','Heavy-edit comedy'];
+const EDITS = ['Cut filler words','Cut silences','Add captions','Mute strong language','Add a title at the top','Make it vertical'];
+const STATUS = { sent:['Waiting for Claude Code','wait'], working:['Claude Code is working','info'], shortlist:['Pick your clips','hot'], cutting:['Cutting clips','info'],
+  review:['Check the clips','hot'], scheduling:['Sending to Buffer','info'], scheduled:['Scheduled','ok'], done:['Done','ok'], blocked:['Blocked','wait'] };
+
+const S = { view:'jobs', id:null, jobs:new Map(), set:Object.assign({}, DEF), store:'wait', note:'', form:null, showPast:false };
+let col = null, setDoc = null, comments = null, downloads = null;
+const app = document.getElementById('app'), saveEl = document.getElementById('save'), back = document.getElementById('back');
+const say = t => { saveEl.textContent = t; };
+const ytOK = u => /^https:\/\/((www\.|m\.)?youtube\.com\/(watch\?|shorts\/|live\/)|youtu\.be\/)[\w?=&%.\-/]+$/i.test(String(u).trim());
+
+/* ---------- time ---------- */
+function tzOff(d, tz){ const p = {}; for (const x of new Intl.DateTimeFormat('en-US', {timeZone:tz, hourCycle:'h23', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'}).formatToParts(d)) p[x.type] = +x.value;
+  return (Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(d.getTime() / 1000) * 1000) / 60000; }
+function wallToISO(wall){ const m = /^(\d+)-(\d+)-(\d+)T(\d+):(\d+)/.exec(wall); if (!m) return ''; const g = Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5]);
+  let t = g - tzOff(new Date(g), S.set.tz) * 60000; t = g - tzOff(new Date(t), S.set.tz) * 60000; return new Date(t).toISOString(); }
+function wall(iso){ const d = new Date(iso); if (isNaN(d)) return ''; return new Date(d.getTime() + tzOff(d, S.set.tz) * 60000).toISOString().slice(0, 16); }
+const dayKey = iso => wall(iso).slice(0, 10), hm = iso => wall(iso).slice(11, 16);
+function dayName(key){ const d = new Date(key + 'T12:00:00Z'); return d.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric', timeZone:'UTC'}); }
+const todayKey = () => dayKey(new Date().toISOString());
+function tcode(s){ s = Math.max(0, +s || 0); const hh = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = Math.floor(s % 60); return (hh ? hh + ':' : '') + String(mm).padStart(2, '0') + ':' + String(ss).padStart(2, '0'); }
+
+/* ---------- storage ---------- */
+function localGet(k, d){ try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } }
+function localSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+async function saveJob(id, patch){
+  const j = S.jobs.get(id); if (!j) return; Object.assign(j, patch, {updatedAt:Date.now()}); say('Saving…');
+  try { if (S.store === 'db') await col.doc(id).update(Object.assign({}, patch, {updatedAt:j.updatedAt})); else localSet('s4f.jobs', Object.fromEntries(S.jobs)); say(S.store === 'db' ? 'Saved' : 'Saved on this device only'); }
+  catch (e) { say('Not saved. Check your connection and change it again.'); }
+}
+async function addJob(doc){
+  const now = Date.now(); Object.assign(doc, {createdAt:now, updatedAt:now}); let id;
+  try { if (S.store === 'db'){ const ref = col.doc(); id = ref.id; await ref.set(doc); } else { id = 'l' + now.toString(36); }
+    S.jobs.set(id, doc); if (S.store !== 'db') localSet('s4f.jobs', Object.fromEntries(S.jobs)); return id; }
+  catch (e) { say('The job could not be saved. Check your connection.'); return null; }
+}
+async function dropJob(id){ S.jobs.delete(id); try { if (S.store === 'db') await col.doc(id).delete(); else localSet('s4f.jobs', Object.fromEntries(S.jobs)); } catch (e) { say('The job could not be deleted.'); } go('jobs'); }
+async function saveSet(){ say('Saving…'); try { if (S.store === 'db') await setDoc.set(S.set); else localSet('s4f.set', S.set); say(S.store === 'db' ? 'Saved' : 'Saved on this device only'); } catch (e) { say('Settings were not saved.'); } }
+async function tell(el, text){
+  if (!comments) return 'none';
+  try { const can = await comments.canSendToClaude(); if (can !== 'available') return can; const anchor = await comments.anchorFor(el); await comments.sendToClaude({anchor, text}); return 'sent'; }
+  catch (e) { return (e && e.code) || 'error'; }
+}
+const told = r => r === 'sent' ? 'Sent to Claude Code. It starts without you asking.' : 'Saved. No Claude Code session is listening. Open Claude Code in the studio4free repository and say "run the studio jobs".';
+
+/* ---------- small widgets ---------- */
+function chips(opts, cur, multi, onPick){
+  const g = h('div', {class:'chips', role:'group'});
+  for (const o of opts){ const on = multi ? (cur || []).includes(o) : cur === o;
+    g.append(h('button', {class:'chip', type:'button', 'aria-pressed':String(on), onclick:e => { const b = e.currentTarget, now = b.getAttribute('aria-pressed') !== 'true';
+      if (!multi) for (const x of g.children) x.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-pressed', String(now)); onPick(o, now); }}, o)); }
+  return g;
+}
+const field = (label, hint, ctl, id) => h('div', {class:'field'}, id ? h('label', {for:id}, label) : h('div', {class:'lab'}, label), hint ? h('p', {class:'hint'}, hint) : null, ctl);
+const pillFor = st => { const t = String(st || '').toLowerCase(); return /publish|posted|sent/.test(t) ? 'ok' : /schedul/.test(t) ? 'info' : /draft|plan/.test(t) ? 'wait' : /refus|fail|block/.test(t) ? 'hot' : ''; };
+function allClips(){ const out = []; for (const [id, j] of S.jobs) for (const c of (j.clips || [])) if (c.publishAt) out.push({id, j, c}); return out.sort((a, b) => new Date(a.c.publishAt) - new Date(b.c.publishAt)); }
+
+/* ---------- views ---------- */
+function go(v, id){ S.view = v; S.id = id || null; S.form = null; try { location.hash = v === 'job' ? 'job-' + id : v; } catch (e) {} render(); scrollTo(0, 0); }
+function render(){
+  back.hidden = !(S.view === 'job' || S.view === 'new');
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-current', (S.view === 'job' || S.view === 'new' ? 'jobs' : S.view) === b.dataset.v ? 'page' : 'false'));
+  if (S.store === 'wait'){ app.replaceChildren(h('p', {class:'muted'}, 'Loading your studio…')); return; }
+  const top = [S.note ? h('p', {class:'note'}, S.note) : null, S.store === 'local' ? h('p', {class:'note'}, 'This view saves on this device only. Open the page inside Claude to keep your work everywhere.') : null];
+  const v = {jobs:vJobs, new:vNew, job:vJob, schedule:vSchedule, setup:vSetup}[S.view] || vJobs;
+  app.replaceChildren(...top.filter(Boolean), ...v().flat().filter(Boolean));
+}
+function vJobs(){
+  const list = [...S.jobs].sort((a, b) => (b[1].updatedAt || 0) - (a[1].updatedAt || 0));
+  return [h('div', {class:'sect'}, h('h2', null, 'Jobs'), h('p', {class:'muted'}, 'Paste a YouTube link. Claude Code finds the moments, cuts the clips and fills your Buffer schedule.'),
+      h('div', {class:'row'}, h('button', {class:'btn pri grow', type:'button', onclick:() => { S.form = {kind:'clips'}; go2new('clips'); }}, 'New clipping job'), h('button', {class:'btn grow', type:'button', onclick:() => go2new('edit')}, 'New edit job'))),
+    list.length ? list.map(([id, j]) => { const st = STATUS[j.status] || [j.status || 'Draft', '']; const n = (j.clips || []).length, sl = (j.shortlist || []).length;
+      return h('button', {class:'card', type:'button', onclick:() => go('job', id)}, h('div', {class:'row'}, h('span', {class:'pill'}, j.kind === 'edit' ? 'Edit' : 'Clips'), h('span', {class:'pill ' + st[1]}, st[0])),
+        h('h3', null, j.name || 'Untitled'), h('p', {class:'muted small'}, n ? n + (n === 1 ? ' clip' : ' clips') : sl ? sl + ' moments found' : 'No clips yet', ' · edited ', new Date(j.updatedAt || j.createdAt || Date.now()).toLocaleDateString())); })
+    : h('div', {class:'empty'}, h('b', null, 'No jobs yet. '), 'Start with "New clipping job". Each job appears here with its status, its clips and their publish times.')];
+}
+function go2new(kind){ S.view = 'new'; S.form = {kind, link:'', name:'', count:S.set.count, len:S.set.len, kinds:[...S.set.kinds], what:'', estyle:'', edits:['Add captions'], target:''}; try { location.hash = 'jobs'; } catch (e) {} render(); scrollTo(0, 0); }
+function vNew(){
+  const f = S.form || (S.form = {kind:'clips', kinds:[]}), clips = f.kind === 'clips', msg = h('p', {class:'hint', role:'status'});
+  const link = h('input', {type:'url', id:'f-link', inputmode:'url', placeholder:'https://youtu.be/…', value:f.link || '', oninput:e => { f.link = e.target.value; }});
+  const name = h('input', {type:'text', id:'f-name', value:f.name || '', oninput:e => { f.name = e.target.value; }});
+  const kids = [h('h2', null, clips ? 'New clipping job' : 'New edit job'),
+    field('YouTube link', 'Only YouTube links work here.', link, 'f-link'), field('Job name', 'A short name, such as the guest or the show.', name, 'f-name')];
+  if (clips) kids.push(field('How many clips?', null, chips(COUNTS, f.count, false, (o, on) => { f.count = on ? o : ''; })),
+    field('How long is each clip?', null, chips(LENS, f.len, false, (o, on) => { f.len = on ? o : ''; })),
+    field('What makes a moment worth clipping?', null, chips(KINDS, f.kinds, true, (o, on) => { const s = new Set(f.kinds); on ? s.add(o) : s.delete(o); f.kinds = [...s]; })),
+    field('Moments you already want', 'Optional. Timestamps help.', h('textarea', {id:'f-what', value:f.what || '', oninput:e => { f.what = e.target.value; }}), 'f-what'));
+  else kids.push(field('What should the edit do?', 'Say it the way you would tell a friend.', h('textarea', {id:'f-what', value:f.what || '', oninput:e => { f.what = e.target.value; }}), 'f-what'),
+    field('Editing style', null, chips(ESTYLES, f.estyle, false, (o, on) => { f.estyle = on ? o : ''; })),
+    field('The edit should also', null, chips(EDITS, f.edits, true, (o, on) => { const s = new Set(f.edits); on ? s.add(o) : s.delete(o); f.edits = [...s]; })),
+    field('Length of the finished video', 'Optional.', h('input', {type:'text', id:'f-target', value:f.target || '', oninput:e => { f.target = e.target.value; }}), 'f-target'));
+  kids.push(h('p', {class:'hint'}, 'The look, the captions and the post times come from Setup.'),
+    h('button', {class:'btn pri wide', type:'button', onclick:async e => { const b = e.currentTarget;
+      if (!ytOK(f.link)){ msg.textContent = 'Paste a full YouTube link first. It starts with https://youtu.be/ or https://www.youtube.com/.'; return; }
+      b.disabled = true; const s = S.set;
+      const doc = {kind:f.kind, name:(f.name || '').trim() || 'Untitled', link:f.link.trim(), status:'sent', statusNote:'', shortlist:[], clips:[],
+        ask:clips ? {count:f.count, len:f.len, kinds:f.kinds, want:f.what || ''} : {what:f.what || '', style:f.estyle, edits:f.edits, target:f.target || ''},
+        look:{fit:s.fit, zoom:s.zoom, captions:s.captions, language:s.language, brand:s.brand, descTail:s.descTail}};
+      const id = await addJob(doc); if (!id){ b.disabled = false; return; }
+      const r = await tell(b, 'Studio4Free: run the new ' + (clips ? 'clipping' : 'edit') + ' job "' + doc.name + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.');
+      S.jobs.get(id).sentNote = told(r); go('job', id); }}, 'Send to Claude Code'), msg);
+  return [h('div', {class:'sect'}, kids)];
+}
+function vJob(){
+  const id = S.id, j = S.jobs.get(id); if (!j) return [h('div', {class:'empty'}, h('b', null, 'This job is not here. '), 'It may have been deleted.')];
+  const st = STATUS[j.status] || [j.status || 'Draft', ''], out = [];
+  const act = (label, status, text, pri) => h('button', {class:'btn wide' + (pri ? ' pri' : ''), type:'button', onclick:async e => { const b = e.currentTarget; b.disabled = true; const r = await tell(b, text); await saveJob(id, {status}); j.sentNote = told(r); render(); }}, label);
+  out.push(h('div', {class:'sect'}, h('div', {class:'row'}, h('span', {class:'pill'}, j.kind === 'edit' ? 'Edit' : 'Clips'), h('span', {class:'pill ' + st[1]}, st[0])), h('h2', null, j.name || 'Untitled'),
+    h('p', {class:'small muted', style:'overflow-wrap:anywhere'}, j.link ? h('a', {href:j.link, target:'_blank', rel:'noopener'}, j.link) : 'No link'),
+    j.statusNote ? h('p', {class:'note'}, String(j.statusNote)) : null, j.sentNote ? h('p', {class:'note', role:'status'}, j.sentNote) : null,
+    j.status === 'sent' ? act('Send to Claude Code again', 'sent', 'Studio4Free: run the job "' + j.name + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.') : null));
+  const sl = j.shortlist || [], clips = (j.clips || []).slice().sort((a, b) => (a.publishAt ? new Date(a.publishAt) : 9e15) - (b.publishAt ? new Date(b.publishAt) : 9e15) || a.n - b.n);
+  if (sl.length && !clips.length){ const kept = () => sl.filter(x => x.keep !== false).length; const cnt = h('span', null, kept());
+    out.push(h('div', {class:'card'}, h('div', {class:'label'}, 'Moments found'), h('p', {class:'hint'}, 'Switch off the moments you do not want. Then cut the rest.'),
+      sl.map(x => h('div', {class:'pick'}, h('div', null, h('b', null, String(x.title || 'Moment ' + x.n)), x.line ? h('p', {class:'small'}, '"' + x.line + '"') : null, x.why ? h('p', {class:'small muted'}, String(x.why)) : null),
+        h('button', {class:'chip', type:'button', 'aria-pressed':String(x.keep !== false), onclick:e => { x.keep = x.keep === false; e.currentTarget.setAttribute('aria-pressed', String(x.keep)); e.currentTarget.textContent = x.keep ? 'Keep' : 'Skip'; cnt.textContent = kept(); saveJob(id, {shortlist:sl}); }}, x.keep !== false ? 'Keep' : 'Skip'),
+        h('span', {class:'tcode mono'}, tcode(x.start) + ' → ' + tcode(x.end) + ' · ' + Math.round(x.end - x.start) + 's'))),
+      j.status === 'shortlist' ? h('button', {class:'btn pri wide', type:'button', onclick:async e => { const b = e.currentTarget; b.disabled = true; const r = await tell(b, 'Studio4Free: cut the kept moments for job "' + j.name + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.'); await saveJob(id, {status:'cutting', shortlist:sl}); j.sentNote = told(r); render(); }}, 'Cut the kept moments (', cnt, ')') : null)); }
+  if (clips.length){
+    const open = clips.filter(c => !c.publishAt).length;
+    out.push(h('div', {class:'sect'}, h('div', {class:'label'}, clips.length + (clips.length === 1 ? ' clip' : ' clips')),
+      open ? h('button', {class:'btn wide', type:'button', onclick:() => { fillSlots(j); saveJob(id, {clips:j.clips}); render(); }}, 'Fill the next open times (' + open + (open === 1 ? ' clip)' : ' clips)')) : null,
+      clips.map(c => clipCard(id, j, c)),
+      j.status === 'review' ? act('Schedule these in Buffer', 'scheduling', 'Studio4Free: schedule the clips of job "' + j.name + '" (job id ' + id + ') in Buffer. Follow CLAUDE.md in the studio4free repository.', true) : null)); }
+  if (!sl.length && !clips.length) out.push(h('div', {class:'empty'}, h('b', null, 'Nothing to show yet. '), j.kind === 'edit' ? 'The edited video appears here when Claude Code finishes it.' : 'The moments Claude Code finds appear here. You pick the ones to cut.'));
+  let sure = false; out.push(h('button', {class:'btn sm warn', type:'button', style:'align-self:flex-start', onclick:e => { if (sure) dropJob(id); else { sure = true; e.currentTarget.textContent = 'Delete this job for good?'; } }}, 'Delete job'));
+  return out;
+}
+function clipCard(id, j, c){
+  const save = () => saveJob(id, {clips:j.clips}); const k = id + '-' + c.n;
+  const vid = /^[0-9a-f]{32}$/.test(c.asset || '') ? h('video', {controls:true, playsinline:true, preload:'metadata', src:'/_blob/' + c.asset + '#t=0.1'}) : h('div', {class:'ph'}, 'Clip ' + c.n, h('br'), c.seconds ? Math.round(c.seconds) + 's' : '');
+  const dl = downloads && /^[0-9a-f]{32}$/.test(c.asset || '') ? h('button', {class:'btn sm', type:'button', onclick:async e => { const b = e.currentTarget; b.disabled = true; b.textContent = 'Preparing…';
+    try { const blob = await (await fetch('/_blob/' + c.asset)).blob(); await downloads.save({filename:(j.name || 'clip').replace(/[^\w -]+/g, '').trim().replace(/\s+/g, '-') + '-' + c.n + '.mp4', data:blob}); b.textContent = 'Saved'; } catch (err) { b.textContent = 'Download'; } b.disabled = false; }}, 'Download') : null;
+  return h('div', {class:'card'}, h('div', {class:'clip'}, vid, h('div', {class:'side'},
+      h('div', {class:'row'}, h('span', {class:'pill'}, 'Clip ' + c.n), c.status ? h('span', {class:'pill ' + pillFor(c.status)}, /publish/i.test(c.status) ? 'Published' : /schedul/i.test(c.status) ? 'Scheduled' : /draft/i.test(c.status) ? 'Draft' : 'Status') : null),
+      c.status ? h('p', {class:'small muted', style:'overflow-wrap:anywhere'}, String(c.status)) : null,
+      field('Publish time', null, h('input', {type:'datetime-local', id:'f-at-' + k, value:c.publishAt ? wall(c.publishAt) : '', onchange:e => { c.publishAt = e.target.value ? wallToISO(e.target.value) : ''; save(); }}), 'f-at-' + k), dl)),
+    field('Title', null, h('input', {type:'text', id:'f-t-' + k, value:c.title || '', onchange:e => { c.title = e.target.value; save(); }}), 'f-t-' + k),
+    field('Description', null, h('textarea', {id:'f-d-' + k, value:c.description || '', onchange:e => { c.description = e.target.value; save(); }}), 'f-d-' + k));
+}
+function fillSlots(j){
+  const taken = new Set(allClips().map(x => wall(x.c.publishAt))), times = (S.set.times || DEF.times).slice().sort();
+  let day = new Date(todayKey() + 'T12:00:00Z'); const next = () => { for (;;){ day = new Date(day.getTime() + 864e5); const key = day.toISOString().slice(0, 10); for (const t of times){ const w = key + 'T' + t; if (!taken.has(w)){ taken.add(w); day = new Date(day.getTime() - 864e5); return w; } } } };
+  for (const c of (j.clips || []).slice().sort((a, b) => a.n - b.n)) if (!c.publishAt) c.publishAt = wallToISO(next());
+}
+function vSchedule(){
+  const all = allClips(), today = todayKey(), byDay = new Map();
+  for (const x of all){ const k = dayKey(x.c.publishAt); if (!S.showPast && k < today) continue; (byDay.get(k) || byDay.set(k, []).get(k)).push(x); }
+  const past = all.filter(x => dayKey(x.c.publishAt) < today).length, times = (S.set.times || DEF.times).slice().sort();
+  const keys = new Set(byDay.keys()); for (let i = 0; i < 7; i++) keys.add(new Date(new Date(today + 'T12:00:00Z').getTime() + i * 864e5).toISOString().slice(0, 10));
+  const days = [...keys].sort().map(k => { const rows = (byDay.get(k) || []).map(x => ({t:hm(x.c.publishAt), x})); if (k >= today) for (const t of times) if (!rows.some(r => r.t === t)) rows.push({t, x:null});
+    rows.sort((a, b) => a.t.localeCompare(b.t));
+    return h('div', {class:'day'}, h('h3', null, dayName(k), k === today ? ' · today' : ''), rows.map(r => r.x ? h('div', {class:'slot'}, h('span', {class:'t'}, r.t),
+        h('div', {class:'b'}, h('b', null, String(r.x.c.title || 'Clip ' + r.x.c.n)), h('div', {class:'row'}, h('span', {class:'pill ' + pillFor(r.x.c.status)}, /publish/i.test(r.x.c.status || '') ? 'Published' : /schedul/i.test(r.x.c.status || '') ? 'Scheduled' : /draft/i.test(r.x.c.status || '') ? 'Draft' : 'Planned'),
+          h('button', {class:'btn sm', type:'button', onclick:() => go('job', r.x.id)}, r.x.j.name || 'Job')), r.x.c.status ? h('span', {class:'st'}, String(r.x.c.status)) : null))
+      : h('div', {class:'slot open'}, h('span', {class:'t'}, r.t), h('div', {class:'b'}, 'Open')))); });
+  return [h('div', {class:'sect'}, h('h2', null, 'Schedule'), h('p', {class:'muted'}, 'Every clip with a publish time, in ' + S.set.tz.replace(/_/g, ' ') + ' time. Open rows are post times with no clip yet.'),
+    past ? h('button', {class:'btn sm', type:'button', style:'align-self:flex-start', onclick:() => { S.showPast = !S.showPast; render(); }}, S.showPast ? 'Hide past days' : 'Show ' + past + ' past clips') : null), days];
+}
+function vSetup(){
+  const s = S.set, set = (k, v) => { s[k] = v; saveSet(); };
+  const txt = (k, label, hint, area) => field(label, hint, h(area ? 'textarea' : 'input', {type:area ? null : 'text', id:'f-s-' + k, value:Array.isArray(s[k]) ? s[k].join(', ') : s[k] || '', onchange:e => { set(k, k === 'times' ? e.target.value.split(',').map(x => x.trim()).filter(x => /^\d\d:\d\d$/.test(x)) : e.target.value); if (k === 'times') e.target.value = s.times.join(', '); }}), 'f-s-' + k);
+  return [h('div', {class:'sect'}, h('h2', null, 'Setup'), h('p', {class:'muted'}, 'Your usual answers. Every new job starts from these.')),
+    h('div', {class:'card'}, h('div', {class:'label'}, 'Posting'), txt('times', 'Post times each day', 'Use 24-hour times with commas, such as 12:15, 17:00.'),
+      txt('tz', 'Time zone', 'A zone name such as America/Chicago.'), field('Post to', null, chips(['YouTube','TikTok','Instagram'], s.services, true, (o, on) => { const x = new Set(s.services); on ? x.add(o) : x.delete(o); set('services', [...x]); })),
+      txt('descTail', 'Line added to every description', 'For example a link to your app.', true)),
+    h('div', {class:'card'}, h('div', {class:'label'}, 'Look of each clip'),
+      field('Frame', null, chips(['Whole frame on a blurred copy','Fill the frame'], s.fit, false, (o, on) => set('fit', on ? o : DEF.fit))),
+      field('Zoom', null, chips(['Smooth','Slow creep','None'], s.zoom, false, (o, on) => set('zoom', on ? o : 'None'))),
+      field('Captions', null, chips(['Yes','No'], s.captions, false, (o, on) => set('captions', on ? o : 'Yes'))),
+      field('Strong language', null, chips(['Mute it','Leave it in'], s.language, false, (o, on) => set('language', on ? o : 'Mute it'))),
+      txt('brand', 'Small line at the bottom of each clip', 'For example your website. Leave it empty for none.')),
+    h('div', {class:'card'}, h('div', {class:'label'}, 'New clipping jobs start with'),
+      field('How many clips?', null, chips(COUNTS, s.count, false, (o, on) => set('count', on ? o : DEF.count))),
+      field('How long is each clip?', null, chips(LENS, s.len, false, (o, on) => set('len', on ? o : DEF.len))),
+      field('What makes a moment worth clipping?', null, chips(KINDS, s.kinds, true, (o, on) => { const x = new Set(s.kinds); on ? x.add(o) : x.delete(o); set('kinds', [...x]); })))];
+}
+
+/* ---------- start ---------- */
+back.onclick = () => go('jobs');
+document.querySelectorAll('.tabs button').forEach(b => { b.onclick = () => go(b.dataset.v); });
+function route(){ const m = /^#job-(.+)$/.exec(location.hash), v = location.hash.slice(1); if (m && S.jobs.has(m[1])){ S.view = 'job'; S.id = m[1]; } else if (['jobs','schedule','setup'].includes(v) && S.view !== 'new'){ S.view = v; S.id = null; } render(); }
+addEventListener('hashchange', route);
+function useLocal(){ S.store = 'local'; S.jobs = new Map(Object.entries(localGet('s4f.jobs', {}))); S.set = Object.assign({}, DEF, localGet('s4f.set', {})); route(); }
+const cl = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
+if (cl){
+  cl.use('db').then(d => { if (!d) return useLocal(); col = d.collection('jobs'); setDoc = d.doc('settings/main');
+    const t = setTimeout(() => { if (S.store === 'wait'){ S.store = 'db'; S.note = 'Your saved jobs cannot be reached yet. The page keeps trying.'; render(); } }, 10000);
+    setDoc.onSnapshot(x => { if (x.exists) S.set = Object.assign({}, DEF, x.data()); if (S.view === 'setup' && document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return; if (S.store !== 'wait') render(); }, () => {});
+    col.onSnapshot(snap => { clearTimeout(t); S.note = ''; const first = S.store === 'wait'; S.store = 'db'; const m = new Map(); for (const x of snap.docs){ const old = S.jobs.get(x.id); m.set(x.id, Object.assign({}, x.data(), old && old.sentNote ? {sentNote:old.sentNote} : {})); } S.jobs = m;
+      if (first) return route(); if (S.view === 'new') return; if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return; render(); },
+      () => { clearTimeout(t); S.store = 'db'; S.note = 'Your saved jobs could not be loaded. Close and reopen this page.'; render(); });
+  }).catch(useLocal);
+  cl.use('comments').then(x => { comments = x || null; }).catch(() => {});
+  cl.use('downloads').then(x => { downloads = x || null; }).catch(() => {});
+} else useLocal();
+})();
+</script>
