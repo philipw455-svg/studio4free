@@ -18,7 +18,7 @@ DEFAULT_STYLE = {
     "end_cue": "FOLLOW / SUBSCRIBE",  # shown in the last seconds of a clip that has no next part. "" for none.
     "layout": "banner",       # used when overlay is empty. banner: the first banner look. plain: no banner.
     "fit": "blur",            # plain layout only. blur: whole frame over a blurred copy. crop: fill the frame.
-    "focus": None,            # None: follow the faces. Or 0 (left edge) to 1 (right edge), or [second, value] steps.
+    "focus": 0.5,             # where the frame sits: 0 (left edge) to 1 (right edge), or [second, value] steps at camera cuts.
     "zoom": "Smooth",         # none | Smooth | Slow creep
     "zoom_steps": True,       # a new zoom level every sixth word and at each sentence. False: one gentle move.
     "zoom_strength": 0.5,     # how far each zoom step goes. 1 is the owner's first clips (up to 119%). 0.5 goes half as far.
@@ -26,7 +26,6 @@ DEFAULT_STYLE = {
                               # 0.38 seconds times this, and for as long as it takes until the next step starts, so the zoom never snaps.
     "cut_push": 0.5,          # how far a cutaway pushes in while it plays. 1 is 103% to 111%. 0.5 is 103% to 107%.
     "cut_sound": True,        # a quiet whoosh on each cutaway
-    "face_aware": True,       # give each shot one fixed frame on its largest face, and move the text below the chin
     "captions": True,
     "caption_words": 3,
     "caption_upper": True,
@@ -243,13 +242,12 @@ def zoom_expr(kind: str, dur: float) -> str:
     return "1"
 
 
-TEXT_DROP = 80    # the most the text may move down to clear a chin, in pixels of a 1920 frame. It keeps the captions in the safe zone.
 ZOOM_LEVELS = [1.0, 1.13, 1.04, 1.19]
 ZOOM_MOVES = {"Smooth": 0.38, "Slow creep": 1.1}   # seconds each zoom step takes
 
 
 def zoom_plan(words: list, dur: float, kind: str, stepped: bool, strength: float = 1.0, smooth: float = 1.0):
-    """The zoom as an ffmpeg expression, and as a function of the clip time for the framing maths.
+    """The zoom as an ffmpeg expression, and as a function of the clip time.
     Stepped is the zoom of the owner's first clips: a new framing every sixth word and at the start of each
     sentence. The framings cycle through ZOOM_LEVELS, and the last one keeps pushing in slowly to the end."""
     move = ZOOM_MOVES.get(kind) if stepped else None
@@ -330,13 +328,23 @@ def cutaway_filters(d, cuts: list, first_input: int, region: tuple, base: str, o
     return inputs, ";".join(parts)
 
 
-def zoomed(bw: int, bh: int, z: str, w: int, h: int, xoff: str, yoff: str) -> str:
-    """Scale the source by the zoom `z` and show a w x h window of it. `xoff` and `yoff` say how far the
-    window's left and top edges sit inside the scaled picture, in pixels. ffmpeg's crop cannot follow a
-    picture that changes size, so the scaled picture is laid over a fixed canvas instead."""
-    return (f"color=black:s={w}x{h}:r=30[zc];"
-            f"[0:v]scale=w='trunc({bw}*{z}/2)*2':h='trunc({bh}*{z}/2)*2':eval=frame[zv];"
-            f"[zc][zv]overlay=x='-({xoff})':y='-({yoff})':eval=frame:shortest=1")
+def zoomed(bw: int, bh: int, z: str, w: int, h: int, focus: str, anchor: str, across: str = "0.5") -> str:
+    """Show a w x h window of the source, zoomed by `z`.
+
+    The source is scaled once to bw x bh and the window is cut at `focus` (0 left, 1 right). The zoom then
+    happens inside that window with the perspective filter, which places the picture in fractions of a pixel.
+    Scaling and cropping frame by frame moves in whole pixels, and a slow zoom made that way shakes.
+    `anchor` is the height that holds still while the picture zooms, and `across` the same from left to right."""
+    out = f"[0:v]fps=30,scale={bw}:{bh},crop={w}:{h}:'({bw}-{w})*({focus})':{(bh - h) // 2}"
+    if z.strip() == "1":
+        return out
+    # The perspective filter knows the frame number, not the time. At 30 frames a second, time is on/30.
+    clock = lambda expr: re.sub(r"\bt\b", "(on/30)", expr)
+    zz, ax, ay = clock(z), clock(across), clock(anchor)
+    left, top = f"({ax})*{w}*(1-1/({zz}))", f"({ay})*{h}*(1-1/({zz}))"
+    right, bottom = f"({left}+{w}/({zz}))", f"({top}+{h}/({zz}))"
+    return (out + f",perspective=x0='{left}':y0='{top}':x1='{right}':y1='{top}':x2='{left}':y2='{bottom}'"
+            f":x3='{right}':y3='{bottom}':sense=source:eval=frame:interpolation=cubic")
 
 
 def even(x: float) -> int:
@@ -399,61 +407,18 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     region = (0, 0, W, H)          # where the source picture sits in the frame
     extra, temps = [], []
     cuts = sorted(clip.get("cutaways") or [], key=lambda c: float(c["at"]))
-    framing = {}
+    k = H / 1920
+    # Three things a clip can set by hand, each as one number or as [second, value] steps that change at a camera cut:
+    # focus: where the frame sits across the source. anchor: the height that holds still while the picture zooms.
+    # text_drop: how many pixels lower the captions and the tag sit, to keep words off a face.
+    focus = focus_expr(clip.get("focus", style.get("focus", 0.5)))
+    anchor = focus_expr(clip.get("anchor", style.get("anchor", 0.3 if stepped else 0.5)))
+    drop_steps = clip.get("text_drop", style.get("text_drop", 0))
+    has_drop = drop_steps not in (0, None, [])
 
     def window(bw: int, bh2: int, w: int, h: int, top: int) -> str:
-        """The speaker's part of the picture, as the filter that cuts it out. With the face model, each shot
-        gets one fixed frame on its largest face, and the text moves down where a chin sits low.
-        `focus` on a clip sets the place across by hand."""
-        manual = clip.get("focus", style.get("focus"))
-        ay, xoff = ("0.300" if stepped else "0.500"), None
-        from . import faces
-        if style.get("face_aware", True) and faces.available():
-            c = (look or {}).get("cap") or {}
-            k = H / 1920
-            size = c.get("size", 144 if banner else 92) * k
-            edge = c.get("outline", 9 if banner else 7) * k
-            mid = c.get("y", 1320) * k if (banner or look) else H * 0.785 - size * 0.6
-            cue_top = (look or {}).get("cue_y", 1555) * k - size * 0.31 - edge
-            # How tall is each caption? A caption that wraps onto two lines reaches higher than a short one.
-            from PIL import ImageFont
-            font = ImageFont.truetype(str(FONTS / (c.get("font", style["font"]).replace(" ", "-") + ".ttf")), int(size / 1.22))
-            rows = []
-            if style.get("captions", True):
-                groups = chunks(words, int(style.get("caption_words", 3)), int(c.get("limit", 10 if (banner or look) else 16)))
-                for g, grp in enumerate(groups):
-                    text = " ".join(x["w"] for x in grp)
-                    text = text.upper() if style.get("caption_upper", True) else text
-                    wide = font.getlength(text) + len(text) + 2 * edge
-                    lines = max(1, -(-int(wide) // int(W - 200 * k)))
-                    rows.append((grp[0]["s"], groups[g + 1][0]["s"] if g + 1 < len(groups) else dur, lines))
-
-            def limit_at(t: float):
-                tops = [mid - n * size / 2 - edge for a, b, n in rows if a - 0.1 <= t < b]
-                if cue and t >= dur - 2.7:
-                    tops.append(cue_top)
-                return (min(tops) - top) / h if tops else None
-
-            def by_hand(t: float):
-                zt = zoom_at(t)
-                mid = steps_at(manual, t) * (1 - w / (bw * zt)) + w / (2 * bw * zt)
-                return mid - w / (2 * bw * zt), mid + w / (2 * bw * zt)
-
-            src = d / "source.mp4"
-            plan = faces.plan(faces.detect(src, start, dur), faces.camera_cuts(src, start, dur), dur, zoom_at,
-                              sw / sh, bh2 / h, w / bw, limit_at,
-                              (TEXT_DROP * k / h) if (banner or look) else 0.0,
-                              [(float(x["at"]), float(x["at"]) + float(x.get("seconds", 1.15))) for x in cuts],
-                              by_hand if manual is not None else None)
-            framing.update(plan)
-            # The text moves in steps of 10 pixels, so a small change between two shots does not show.
-            framing["drop_px"] = [[row[0], min(TEXT_DROP * k, -(-row[1] * h // 10) * 10)] for row in plan["drop"]]
-            ay = focus_expr(plan["ay"])
-            if manual is None:
-                xoff = f"clip(({focus_expr(plan['center'])})*{bw}*{z}-{w / 2:.0f}\\,0\\,{bw}*{z}-{w})"
-        if xoff is None:
-            xoff = f"({bw}*{z}-{w})*({focus_expr(manual if manual is not None else 0.5)})"
-        return zoomed(bw, bh2, z, w, h, xoff, f"({bh2}*{z}-{h})*({ay})")
+        """The speaker's part of the picture, as the filter that cuts it out."""
+        return zoomed(bw, bh2, z, w, h, focus, anchor)
 
     if look:
         png = out_dir / f"{stem}-overlay.png"
@@ -465,7 +430,7 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
             region = (vx, vt, vw, vh)
             sc = max(vw / sw, vh / sh)
             bw, bh2 = even(sw * sc + 1), even(sh * sc + 1)
-            video = (zoomed(bw, bh2, z, vw, vh, f"({bw}*{z}-{vw})/2", f"({bh2}*{z}-{vh})/2")
+            video = (zoomed(bw, bh2, z, vw, vh, "0.5", "0.5")
                      + f",pad={W}:{H}:{vx}:{vt}:0x{bg.lstrip('#')},setsar=1[vb];"
                      f"[vb][1:v]overlay=0:0[v0]")
         else:
@@ -497,7 +462,7 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
             e = f"({p}*{p}*(3-2*{p}))"
             (x0, y0), (x1, y1) = g["from"], g["to"]
             # The tag rests under the captions, so it moves down with them.
-            rest = f"({y1}+({focus_expr(framing['drop_px'])}))" if framing.get("drop_px") else str(y1)
+            rest = f"({y1}+({focus_expr(drop_steps)})*{k})" if has_drop else str(y1)
             video = (video[:-4] + f"[s{idx}];[s{idx}][{idx}:v]overlay=x='{x0}+({x1 - x0})*{e}':y='{y0}+({rest}-{y0})*{e}':eval=frame[v0]")
     elif banner:
         png = out_dir / f"{stem}-overlay.png"
@@ -516,12 +481,11 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
         video = window(bw, bh, W, H, 0) + ",setsar=1[v0]"
     else:
         fh = even(W * sh / sw)
-        video = (zoomed(W, fh, z, W, fh, f"({W}*{z}-{W})/2", f"({fh}*{z}-{fh})/2") + "[fg];"
+        video = (zoomed(W, fh, z, W, fh, "0.5", "0.5") + "[fg];"
                  f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=28:4,eq=brightness=-0.22:saturation=0.8[bg];"
                  f"[bg][fg]overlay=0:(H-h)/2,setsar=1[v0]")
-    drop_px = framing.get("drop_px")
     ass.write_text(build_ass(style, (W, H), clip.get("title", ""), words, mutes, dur, banner, cue, look,
-                             (lambda t: steps_at(drop_px, t)) if drop_px else None), encoding="utf-8")
+                             (lambda t: steps_at(drop_steps, t) * k) if has_drop else None), encoding="utf-8")
     if cuts:
         cut_in, chain = cutaway_filters(d, cuts, 1 + extra.count("-i"), region, "vraw", "vcut", float(style.get("cut_push", 0.5)))
         extra += cut_in
@@ -555,8 +519,6 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
         tmp.unlink()
     return {"n": n, "file": f"clips/{out.name}", "srt": f"clips/{stem}.srt", "seconds": round(dur, 1),
             "title": clip.get("title", ""), "muted": len(mutes), "mb": round(out.stat().st_size / 1048576, 1),
-            **({"faces": {"checks": framing["checks"], "touch": framing["touch"],
-                          "text_drop": sorted({int(r[1]) for r in framing.get("drop_px", [])})}} if framing else {}),
             **({"series": clip.get("series", ""), "part": part, "parts": parts} if multi else {})}
 
 
@@ -576,9 +538,4 @@ def render(job: str, only: list | None = None) -> None:
         r = render_clip(d, info, transcript, style, clip)
         done.append(r)
         print(f"Clip {r['n']}: {r['seconds']}s, {r['mb']} MB, {r['muted']} muted words -> {d / r['file']}", flush=True)
-        if "faces" in r:
-            touch = r["faces"]["touch"]
-            print("  Captions: clear of the face in all " + str(r["faces"]["checks"]) + " checks." if not touch else
-                  "  Captions touch a face at " + ", ".join(f"{a}-{b}s" for a, b in touch) + ". Look at those frames.",
-                  flush=True)
     write_json(d / "rendered.json", done)

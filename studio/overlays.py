@@ -195,7 +195,8 @@ def design(name: str, size: tuple, title: str, style: dict, part_label: str = ""
 
     elif name == "poster":
         # A loud title in tall letters opens the clip, top left, then fades after 2 seconds.
-        # The yellow brand tag starts under the title, then moves to sit under the captions.
+        # The yellow brand tag never moves. It sits in the middle, and the captions sit under it.
+        # The owner asked for this on 12 Nov 2026: "move the caption under the app noxi, dont move app noxis banner".
         _scrim(img, int(940 * k), int(1320 * k), 0, 90)
         _scrim(img, int(1320 * k), H, 90, 90)
         intro = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -220,15 +221,13 @@ def design(name: str, size: tuple, title: str, style: dict, part_label: str = ""
             chip.alpha_composite(mark, (int(x), int(8 * k)))
             x += mark.width + 12 * k
         dc.text((x, tag_h / 2), tag, font=bf, fill=(12, 12, 12, 255), anchor="lm")
-        cap.update(y=1085, size=112, box=True, outline=16, shadow=0)
+        # From the top: the tag at 1002 to 1062, then the caption box down to the safe-zone edge at 1248.
+        if tag:
+            img.alpha_composite(chip, (int((W - tag_w) / 2), int(1002 * k)))
+        cap.update(y=1163, size=112, box=True, outline=16, shadow=0)
         cue_y = 950
         hold = float(style.get("title_seconds", 2.0))
-        extras = {"intro": {"image": intro, "hold": hold, "fade": 0.4},
-                  "tag": {"image": chip, "from": (int(70 * k), int(ty)), "to": (int((W - tag_w) / 2), int(1180 * k)),
-                          "at": hold, "move": 0.5}}
-        if not tag:
-            extras.pop("tag")
-        return {"image": img, "video": video, "cap": cap, "cue_y": cue_y, **extras}
+        return {"image": img, "video": video, "cap": cap, "cue_y": cue_y, "intro": {"image": intro, "hold": hold, "fade": 0.4}}
 
     else:
         raise ValueError(f"Unknown overlay: {name}")

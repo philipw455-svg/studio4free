@@ -1,7 +1,7 @@
 """Clip studio command line. Run: python -m studio <step> --job NAME"""
 import argparse
 
-from . import buffer, fetch, plan, render, review, transcribe
+from . import buffer, fetch, plan, render, review, shots, transcribe
 
 
 def nums(text):
@@ -22,6 +22,10 @@ def main():
     a.add_argument("--language", default=None)
 
     a = sub.add_parser("cut", help="render the clips listed in clips.json")
+    a.add_argument("--job", required=True)
+    a.add_argument("--only", default="", help="clip numbers, for example 2,5")
+
+    a = sub.add_parser("shots", help="list each clip's camera cuts and save one frame per shot")
     a.add_argument("--job", required=True)
     a.add_argument("--only", default="", help="clip numbers, for example 2,5")
 
@@ -50,6 +54,8 @@ def main():
         transcribe.transcribe(x.job, x.model, x.language)
     elif x.step == "cut":
         render.render(x.job, nums(x.only))
+    elif x.step == "shots":
+        shots.shots(x.job, nums(x.only))
     elif x.step == "schedule":
         plan.schedule(x.job, x.start, x.times, x.tz, x.order)
     elif x.step == "texts":
