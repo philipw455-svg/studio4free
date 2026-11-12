@@ -147,7 +147,7 @@ function h(tag, attrs, ...kids){
   return e;
 }
 const DEF = { times:['12:15','17:00'], tz:'America/Chicago', services:['YouTube','TikTok'], brand:'', descTail:'',
-  count:'10', len:'20 to 40 seconds', kinds:['Strong opinions','Funny moments','Emotional moments'], fit:'Black banner with title and brand', zoom:'Smooth', captions:'Yes', language:'Mute it', parts:'Split long stories into parts', overlay:'First banner' };
+  count:'10', len:'20 to 40 seconds', kinds:['Strong opinions','Funny moments','Emotional moments'], fit:'Black banner with title and brand', zoom:'Smooth', captions:'Yes', language:'Mute it', parts:'Split long stories into parts', overlay:'Poster' };
 const COUNTS = ['3','5','10','20','As many as are good'];
 const LENS = ['Under 20 seconds','20 to 40 seconds','40 to 60 seconds','Whatever the moment needs'];
 const KINDS = ['Strong opinions','Funny moments','Stories','Advice and tips','Emotional moments','Surprising facts','Disagreements','Quotable one-liners'];
@@ -365,7 +365,7 @@ function vSetup(){
       txt('tz', 'Time zone', 'A zone name such as America/Chicago.'), field('Post to', null, chips(['YouTube','TikTok','Instagram'], s.services, true, (o, on) => { const x = new Set(s.services); on ? x.add(o) : x.delete(o); set('services', [...x]); })),
       txt('descTail', 'Line added to every description', 'For example a link to your app.', true)),
     h('div', {class:'card'}, h('div', {class:'label'}, 'Look of each clip'),
-      field('Overlay', 'The first five keep every word inside the safe zone. "First banner" is the look of your earlier clips.', chips(['Banner','Glass card','Lower third','Wide frame','Poster','First banner'], s.overlay, false, (o, on) => set('overlay', on ? o : DEF.overlay))),
+      field('Overlay', 'The first five keep every word inside the safe zone. Poster shows its title for 1.5 seconds, then moves the Noxi tag under the captions. "First banner" is the look of your earlier clips.', chips(['Banner','Glass card','Lower third','Wide frame','Poster','First banner'], s.overlay, false, (o, on) => set('overlay', on ? o : DEF.overlay))),
       field('Zoom', null, chips(['Smooth','Slow creep','None'], s.zoom, false, (o, on) => set('zoom', on ? o : 'None'))),
       field('Captions', null, chips(['Yes','No'], s.captions, false, (o, on) => set('captions', on ? o : 'Yes'))),
       field('Strong language', null, chips(['Mute it','Leave it in'], s.language, false, (o, on) => set('language', on ? o : 'Mute it'))),
