@@ -224,7 +224,8 @@ def design(name: str, size: tuple, title: str, style: dict, part_label: str = ""
         # From the top: the tag at 1002 to 1062, then the caption box down to the safe-zone edge at 1248.
         if tag:
             img.alpha_composite(chip, (int((W - tag_w) / 2), int(1002 * k)))
-        cap.update(y=1163, size=112, box=True, outline=16, shadow=0)
+        # One line only: a caption that wraps onto a second line would rise over the tag.
+        cap.update(y=1163, size=112, box=True, outline=16, shadow=0, line_px=850)
         cue_y = 950
         hold = float(style.get("title_seconds", 2.0))
         return {"image": img, "video": video, "cap": cap, "cue_y": cue_y, "intro": {"image": intro, "hold": hold, "fade": 0.4}}

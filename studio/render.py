@@ -70,9 +70,13 @@ def clip_words(transcript: dict, start: float, end: float) -> list:
     return out
 
 
-def chunks(words: list, size: int, limit: int = 16) -> list:
+def chunks(words: list, size: int, limit: int = 16, fits=None) -> list:
+    """Group the words into captions. `fits(text)` says whether a caption still fits on one line."""
     groups, cur = [], []
     for i, w in enumerate(words):
+        if fits and cur and not fits(" ".join(x["w"] for x in cur + [w])):
+            groups.append(cur)
+            cur = []
         cur.append(w)
         gap = words[i + 1]["s"] - w["e"] if i + 1 < len(words) else 9
         ends = bool(re.search(r"[.!?]$", w["w"]))
@@ -201,7 +205,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         ev.append(f"Dialogue: 1,{ass_time(0)},{ass_time(dur)},Brand,,0,0,0,,{clean(style['brand'])}")
     if style.get("captions", True):
         acc = ass_colour(style["accent"])
-        groups = chunks(words, int(style.get("caption_words", 3)), int(c.get("limit", 10 if banner else 16)))
+        fits = None
+        if c.get("line_px"):
+            # Measure the real width, so a caption never wraps onto a second line.
+            from PIL import ImageFont
+            # libass draws Montserrat at about two thirds of the style's size. Measured on rendered clips, 12 Nov 2026.
+            face = ImageFont.truetype(str(FONTS / (font.replace(" ", "-") + ".ttf")), int(cap / 1.5))
+            upper = style.get("caption_upper", True)
+            fits = lambda text: face.getlength(text.upper() if upper else text) + len(text) <= c["line_px"] * W / 1080
+        groups = chunks(words, int(style.get("caption_words", 3)), int(c.get("limit", 10 if banner else 16)), fits)
         for g, grp in enumerate(groups):
             nxt = groups[g + 1][0]["s"] if g + 1 < len(groups) else dur
             for i, w in enumerate(grp):

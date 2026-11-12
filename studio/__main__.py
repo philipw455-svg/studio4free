@@ -1,7 +1,7 @@
 """Clip studio command line. Run: python -m studio <step> --job NAME"""
 import argparse
 
-from . import buffer, fetch, plan, render, review, shots, transcribe
+from . import buffer, fetch, plan, render, review, shots, tools, transcribe
 
 
 def nums(text):
@@ -26,6 +26,19 @@ def main():
     a.add_argument("--only", default="", help="clip numbers, for example 2,5")
 
     a = sub.add_parser("shots", help="list each clip's camera cuts and save one frame per shot")
+    a.add_argument("--job", required=True)
+    a.add_argument("--only", default="", help="clip numbers, for example 2,5")
+
+    a = sub.add_parser("words", help="print the words between two source times, each with its start time")
+    a.add_argument("--job", required=True)
+    a.add_argument("--start", type=float, required=True)
+    a.add_argument("--end", type=float, required=True)
+
+    a = sub.add_parser("fix", help="correct misheard words in the transcript")
+    a.add_argument("--job", required=True)
+    a.add_argument("edits", nargs="+", help='"seconds|old|new" for the word that starts at that source time; an empty new deletes it')
+
+    a = sub.add_parser("sheet", help="save a sheet of frames of each rendered clip, to check it by eye")
     a.add_argument("--job", required=True)
     a.add_argument("--only", default="", help="clip numbers, for example 2,5")
 
@@ -56,6 +69,12 @@ def main():
         render.render(x.job, nums(x.only))
     elif x.step == "shots":
         shots.shots(x.job, nums(x.only))
+    elif x.step == "words":
+        tools.words(x.job, x.start, x.end)
+    elif x.step == "fix":
+        tools.fix(x.job, x.edits)
+    elif x.step == "sheet":
+        tools.sheet(x.job, nums(x.only))
     elif x.step == "schedule":
         plan.schedule(x.job, x.start, x.times, x.tz, x.order)
     elif x.step == "texts":
