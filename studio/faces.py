@@ -137,6 +137,7 @@ def plan(samples: list, cuts: list, dur: float, zoom_at, aspect: float, r: float
     window(t) gives (left, right) across the source when the owner set the focus by hand."""
     bounds = [0.0] + [c for c in cuts if 0.15 < c < dur - 0.15] + [dur]
     center, ays, drops, bad, checks, last_c = [], [], [], [], 0, 0.5
+    closest = max([zoom_at(t) for t, _ in samples] + [1.0])
     for a, b in zip(bounds, bounds[1:]):
         at = round(max(0.0, a - 0.02), 3)
         shot = [(t, [f for f in fs if _plausible(f, aspect)]) for t, fs in samples if a + 0.08 <= t < b - 0.08]
@@ -149,7 +150,7 @@ def plan(samples: list, cuts: list, dur: float, zoom_at, aspect: float, r: float
         raw = [p[1] for p in pts]
         xs = [_median(raw[max(0, i - 2):i + 3]) for i in range(len(raw))]
         face = _median([p[4] for p in pts])
-        tight = win / 1.27                      # the window at the closest zoom step
+        tight = win / closest                   # the window at the closest zoom step
         order = sorted(xs)
         lo_x, hi_x = order[int(0.05 * (len(order) - 1))], order[int(0.95 * (len(order) - 1) + 0.5)]
         if hi_x - lo_x + face <= tight:

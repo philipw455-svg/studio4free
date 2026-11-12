@@ -21,6 +21,9 @@ DEFAULT_STYLE = {
     "focus": None,            # None: follow the faces. Or 0 (left edge) to 1 (right edge), or [second, value] steps.
     "zoom": "Smooth",         # none | Smooth | Slow creep
     "zoom_steps": True,       # a new zoom level every sixth word and at each sentence. False: one gentle move.
+    "zoom_strength": 0.5,     # how far each zoom step goes. 1 is the owner's first clips (up to 119%). 0.5 goes half as far.
+    "zoom_smooth": 1.5,       # how long each zoom step takes. 1 is 0.38 seconds. 1.5 is half as long again, and it eases in and out.
+    "cut_push": 0.5,          # how far a cutaway pushes in while it plays. 1 is 103% to 111%. 0.5 is 103% to 107%.
     "cut_sound": True,        # a quiet whoosh on each cutaway
     "face_aware": True,       # give each shot one fixed frame on its largest face, and move the text below the chin
     "captions": True,
@@ -244,11 +247,13 @@ ZOOM_LEVELS = [1.0, 1.13, 1.04, 1.19]
 ZOOM_MOVES = {"Smooth": 0.38, "Slow creep": 1.1}   # seconds each zoom step takes
 
 
-def zoom_plan(words: list, dur: float, kind: str, stepped: bool):
+def zoom_plan(words: list, dur: float, kind: str, stepped: bool, strength: float = 1.0, smooth: float = 1.0):
     """The zoom as an ffmpeg expression, and as a function of the clip time for the framing maths.
     Stepped is the zoom of the owner's first clips: a new framing every sixth word and at the start of each
     sentence. The framings cycle through ZOOM_LEVELS, and the last one keeps pushing in slowly to the end."""
     move = ZOOM_MOVES.get(kind) if stepped else None
+    if move:
+        move = round(move * smooth, 3)
     if not move or not words:
         if kind == "Slow creep":
             return zoom_expr(kind, dur), lambda t: 1 + 0.08 * t / dur
@@ -261,21 +266,22 @@ def zoom_plan(words: list, dur: float, kind: str, stepped: bool):
         if i and (n >= 6 or re.search(r"[.?!]$", words[i - 1]["w"])):
             t = max(0.0, w["s"] - 0.05)
             level, n, last = level + 1, 0, t
-            keys.append((round(t, 2), ZOOM_LEVELS[level % 4] - ZOOM_LEVELS[(level - 1) % 4]))
+            keys.append((round(t, 2), (ZOOM_LEVELS[level % 4] - ZOOM_LEVELS[(level - 1) % 4]) * strength))
     linear = kind == "Slow creep"
     end = keys[-1][0] if keys else 0.0
     terms = ["1"]
     for t, dz in keys:
         x = f"clip((t-{t:.2f})/{move}\\,0\\,1)"
-        terms.append(f"{dz:+.3f}*" + (x if linear else f"(1-pow(1-{x}\\,3))"))
-    terms.append(f"+0.08*clip((t-{end:.2f})/2.5\\,0\\,1)")
+        # A step that takes longer than the first clips' also eases in, so it starts and stops softly.
+        terms.append(f"{dz:+.4f}*" + (x if linear else f"({x}*{x}*(3-2*{x}))" if smooth > 1 else f"(1-pow(1-{x}\\,3))"))
+    terms.append(f"+{0.08 * strength:.3f}*clip((t-{end:.2f})/2.5\\,0\\,1)")
 
     def at(t: float) -> float:
         z = 1.0
         for kt, dz in keys:
             x = min(1.0, max(0.0, (t - kt) / move))
-            z += dz * (x if linear else 1 - (1 - x) ** 3)
-        return max(1.0, z + 0.08 * min(1.0, max(0.0, (t - end) / 2.5)))
+            z += dz * (x if linear else x * x * (3 - 2 * x) if smooth > 1 else 1 - (1 - x) ** 3)
+        return max(1.0, z + 0.08 * strength * min(1.0, max(0.0, (t - end) / 2.5)))
 
     return "max(1\\,(" + "".join(terms) + "))", at
 
@@ -293,7 +299,7 @@ def steps_at(steps, t: float) -> float:
     return value
 
 
-def cutaway_filters(d, cuts: list, first_input: int, region: tuple, base: str, out: str):
+def cutaway_filters(d, cuts: list, first_input: int, region: tuple, base: str, out: str, push: float = 1.0):
     """Stock clips laid over the speaker for about a second, each on the word it shows.
     A cutaway is {"file": "stock/4344.mp4", "at": 38.0, "seconds": 1.15, "from": 2}; `at` is seconds into the clip."""
     x, y, w, h = region
@@ -307,7 +313,7 @@ def cutaway_filters(d, cuts: list, first_input: int, region: tuple, base: str, o
             sys.exit(f"The cutaway file is missing: {c['file']}")
         inputs += ["-ss", f"{frm:.2f}", "-t", f"{secs + 0.2:.2f}", "-i", path]
         nxt = out if i == len(cuts) - 1 else f"ct{i}"
-        grow = f"(1.03+0.08*t/{secs:.2f})"   # the slow push of the owner's first clips
+        grow = f"(1.03+{0.08 * push:.3f}*t/{secs:.2f})"   # the slow push of the owner's first clips, scaled by `push`
         parts.append(
             f"[{first_input + i}:v]fps=30,scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
             f"scale=w='trunc({w}*{grow}/2)*2':h='trunc({h}*{grow}/2)*2':eval=frame,crop={w}:{h},setsar=1,"
@@ -382,7 +388,7 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
 
     kind = clip.get("zoom", style.get("zoom", "none"))
     stepped = bool(style.get("zoom_steps", True)) and kind in ZOOM_MOVES
-    z, zoom_at = zoom_plan(words, dur, kind, stepped)
+    z, zoom_at = zoom_plan(words, dur, kind, stepped, float(style.get("zoom_strength", 0.5)), float(style.get("zoom_smooth", 1.5)))
     region = (0, 0, W, H)          # where the source picture sits in the frame
     extra, temps = [], []
     cuts = sorted(clip.get("cutaways") or [], key=lambda c: float(c["at"]))
@@ -510,7 +516,7 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     ass.write_text(build_ass(style, (W, H), clip.get("title", ""), words, mutes, dur, banner, cue, look,
                              (lambda t: steps_at(drop_px, t)) if drop_px else None), encoding="utf-8")
     if cuts:
-        cut_in, chain = cutaway_filters(d, cuts, 1 + extra.count("-i"), region, "vraw", "vcut")
+        cut_in, chain = cutaway_filters(d, cuts, 1 + extra.count("-i"), region, "vraw", "vcut", float(style.get("cut_push", 0.5)))
         extra += cut_in
         if "[vb];[vb]" in video:
             video = video.replace("[vb];[vb]", f"[vraw];{chain};[vcut]", 1)
