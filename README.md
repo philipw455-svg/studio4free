@@ -15,4 +15,4 @@ python -m studio cut --job demo
 python -m studio schedule --job demo --start 2026-11-20
 ```
 
-The caption font is Anton, under the SIL Open Font License (`assets/fonts/OFL.txt`).
+The fonts are Montserrat and Anton, under the SIL Open Font License (`assets/fonts`).

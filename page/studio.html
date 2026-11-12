@@ -144,7 +144,7 @@ function h(tag, attrs, ...kids){
   return e;
 }
 const DEF = { times:['12:15','17:00'], tz:'America/Chicago', services:['YouTube','TikTok'], brand:'', descTail:'',
-  count:'10', len:'20 to 40 seconds', kinds:['Strong opinions','Funny moments','Emotional moments'], fit:'Whole frame on a blurred copy', zoom:'Smooth', captions:'Yes', language:'Mute it' };
+  count:'10', len:'20 to 40 seconds', kinds:['Strong opinions','Funny moments','Emotional moments'], fit:'Black banner with title and brand', zoom:'Smooth', captions:'Yes', language:'Mute it' };
 const COUNTS = ['3','5','10','20','As many as are good'];
 const LENS = ['Under 20 seconds','20 to 40 seconds','40 to 60 seconds','Whatever the moment needs'];
 const KINDS = ['Strong opinions','Funny moments','Stories','Advice and tips','Emotional moments','Surprising facts','Disagreements','Quotable one-liners'];
@@ -341,11 +341,11 @@ function vSetup(){
       txt('tz', 'Time zone', 'A zone name such as America/Chicago.'), field('Post to', null, chips(['YouTube','TikTok','Instagram'], s.services, true, (o, on) => { const x = new Set(s.services); on ? x.add(o) : x.delete(o); set('services', [...x]); })),
       txt('descTail', 'Line added to every description', 'For example a link to your app.', true)),
     h('div', {class:'card'}, h('div', {class:'label'}, 'Look of each clip'),
-      field('Frame', null, chips(['Whole frame on a blurred copy','Fill the frame'], s.fit, false, (o, on) => set('fit', on ? o : DEF.fit))),
+      field('Frame', null, chips(['Black banner with title and brand','Whole frame on a blurred copy','Fill the frame'], s.fit, false, (o, on) => set('fit', on ? o : DEF.fit))),
       field('Zoom', null, chips(['Smooth','Slow creep','None'], s.zoom, false, (o, on) => set('zoom', on ? o : 'None'))),
       field('Captions', null, chips(['Yes','No'], s.captions, false, (o, on) => set('captions', on ? o : 'Yes'))),
       field('Strong language', null, chips(['Mute it','Leave it in'], s.language, false, (o, on) => set('language', on ? o : 'Mute it'))),
-      txt('brand', 'Small line at the bottom of each clip', 'For example your website. Leave it empty for none.')),
+      txt('brand', 'Brand text on each clip', 'It sits beside your mark in the banner, such as appnoxi.com. Leave it empty for none.')),
     h('div', {class:'card'}, h('div', {class:'label'}, 'New clipping jobs start with'),
       field('How many clips?', null, chips(COUNTS, s.count, false, (o, on) => set('count', on ? o : DEF.count))),
       field('How long is each clip?', null, chips(LENS, s.len, false, (o, on) => set('len', on ? o : DEF.len))),
