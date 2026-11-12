@@ -147,7 +147,7 @@ function h(tag, attrs, ...kids){
   return e;
 }
 const DEF = { times:['12:15','17:00'], tz:'America/Chicago', services:['YouTube','TikTok'], brand:'', descTail:'',
-  count:'10', len:'20 to 40 seconds', kinds:['Strong opinions','Funny moments','Emotional moments'], fit:'Black banner with title and brand', zoom:'Smooth', captions:'Yes', language:'Mute it', parts:'Split long stories into parts' };
+  count:'10', len:'20 to 40 seconds', kinds:['Strong opinions','Funny moments','Emotional moments'], fit:'Black banner with title and brand', zoom:'Smooth', captions:'Yes', language:'Mute it', parts:'Split long stories into parts', overlay:'First banner' };
 const COUNTS = ['3','5','10','20','As many as are good'];
 const LENS = ['Under 20 seconds','20 to 40 seconds','40 to 60 seconds','Whatever the moment needs'];
 const KINDS = ['Strong opinions','Funny moments','Stories','Advice and tips','Emotional moments','Surprising facts','Disagreements','Quotable one-liners'];
@@ -253,7 +253,7 @@ function vJobs(){
         h('h3', null, j.name || 'Untitled'), h('p', {class:'muted small'}, n ? n + (n === 1 ? ' clip' : ' clips') : sl ? sl + ' moments found' : 'No clips yet', ' · edited ', new Date(j.updatedAt || j.createdAt || Date.now()).toLocaleDateString())); })
     : h('div', {class:'empty'}, h('b', null, 'No jobs yet. '), 'Start with "New clipping job". Each job appears here with its status, its clips and their publish times.')];
 }
-function go2new(kind){ S.view = 'new'; S.form = {kind, link:'', name:'', count:S.set.count, len:S.set.len, parts:S.set.parts, kinds:[...S.set.kinds], what:'', estyle:'', edits:['Add captions'], target:''}; try { location.hash = 'jobs'; } catch (e) {} render(); scrollTo(0, 0); }
+function go2new(kind){ S.view = 'new'; S.form = {kind, link:'', name:'', count:S.set.count, len:S.set.len, parts:S.set.parts, overlay:S.set.overlay, kinds:[...S.set.kinds], what:'', estyle:'', edits:['Add captions'], target:''}; try { location.hash = 'jobs'; } catch (e) {} render(); scrollTo(0, 0); }
 function vNew(){
   const f = S.form || (S.form = {kind:'clips', kinds:[]}), clips = f.kind === 'clips', msg = h('p', {class:'hint', role:'status'});
   const link = h('input', {type:'url', id:'f-link', inputmode:'url', placeholder:'https://youtu.be/…', value:f.link || '', oninput:e => { f.link = e.target.value; }});
@@ -263,6 +263,7 @@ function vNew(){
   if (clips) kids.push(field('How many clips?', null, chips(COUNTS, f.count, false, (o, on) => { f.count = on ? o : ''; })),
     field('How long is each clip?', null, chips(LENS, f.len, false, (o, on) => { f.len = on ? o : ''; })),
     field('Long stories', 'A story that needs more time becomes Part 1, Part 2 and so on. Part 1 always posts first.', chips(['Split long stories into parts','Short clips only'], f.parts, false, (o, on) => { f.parts = on ? o : 'Short clips only'; })),
+    field('Overlay', 'The look of the title, the brand and the captions on these clips.', chips(['Banner','Glass card','Lower third','Wide frame','Poster','First banner'], f.overlay, false, (o, on) => { f.overlay = on ? o : S.set.overlay; })),
     field('What makes a moment worth clipping?', null, chips(KINDS, f.kinds, true, (o, on) => { const s = new Set(f.kinds); on ? s.add(o) : s.delete(o); f.kinds = [...s]; })),
     field('Moments you already want', 'Optional. Timestamps help.', h('textarea', {id:'f-what', value:f.what || '', oninput:e => { f.what = e.target.value; }}), 'f-what'));
   else kids.push(field('What should the edit do?', 'Say it the way you would tell a friend.', h('textarea', {id:'f-what', value:f.what || '', oninput:e => { f.what = e.target.value; }}), 'f-what'),
@@ -275,7 +276,7 @@ function vNew(){
       b.disabled = true; const s = S.set;
       const doc = {kind:f.kind, name:(f.name || '').trim() || 'Untitled', link:f.link.trim(), status:'sent', statusNote:'', shortlist:[], clips:[],
         ask:clips ? {count:f.count, len:f.len, parts:f.parts, kinds:f.kinds, want:f.what || ''} : {what:f.what || '', style:f.estyle, edits:f.edits, target:f.target || ''},
-        look:{fit:s.fit, zoom:s.zoom, captions:s.captions, language:s.language, brand:s.brand, descTail:s.descTail}};
+        look:{overlay:f.overlay || s.overlay, fit:s.fit, zoom:s.zoom, captions:s.captions, language:s.language, brand:s.brand, descTail:s.descTail}};
       const id = await addJob(doc); if (!id){ b.disabled = false; return; }
       const r = await tell(b, 'Studio4Free: run the new ' + (clips ? 'clipping' : 'edit') + ' job "' + doc.name + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.');
       S.jobs.get(id).sentNote = told(r); go('job', id); }}, 'Send to Claude Code'), msg);
@@ -364,7 +365,7 @@ function vSetup(){
       txt('tz', 'Time zone', 'A zone name such as America/Chicago.'), field('Post to', null, chips(['YouTube','TikTok','Instagram'], s.services, true, (o, on) => { const x = new Set(s.services); on ? x.add(o) : x.delete(o); set('services', [...x]); })),
       txt('descTail', 'Line added to every description', 'For example a link to your app.', true)),
     h('div', {class:'card'}, h('div', {class:'label'}, 'Look of each clip'),
-      field('Frame', null, chips(['Black banner with title and brand','Whole frame on a blurred copy','Fill the frame'], s.fit, false, (o, on) => set('fit', on ? o : DEF.fit))),
+      field('Overlay', 'The first five keep every word inside the safe zone. "First banner" is the look of your earlier clips.', chips(['Banner','Glass card','Lower third','Wide frame','Poster','First banner'], s.overlay, false, (o, on) => set('overlay', on ? o : DEF.overlay))),
       field('Zoom', null, chips(['Smooth','Slow creep','None'], s.zoom, false, (o, on) => set('zoom', on ? o : 'None'))),
       field('Captions', null, chips(['Yes','No'], s.captions, false, (o, on) => set('captions', on ? o : 'Yes'))),
       field('Strong language', null, chips(['Mute it','Leave it in'], s.language, false, (o, on) => set('language', on ? o : 'Mute it'))),
