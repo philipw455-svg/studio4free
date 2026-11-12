@@ -13,7 +13,8 @@ STRONG = {"fuck", "fucking", "fucked", "fucker", "motherfucker", "shit", "shitty
           "bitches", "asshole", "dick", "pussy", "cunt", "goddamn", "bastard"}
 DEFAULT_STYLE = {
     "aspect": "9:16",
-    "overlay": "",            # a safe-zone look from overlays.py: banner-safe, glass, lower, wide or poster.
+    "overlay": "poster",      # a safe-zone look from overlays.py: banner-safe, glass, lower, wide or poster. "" for the first banner.
+    "title_seconds": 1.5,     # poster only: how long the opening title stays before it fades.
     "layout": "banner",       # used when overlay is empty. banner: the first banner look. plain: no banner.
     "fit": "blur",            # plain layout only. blur: whole frame over a blurred copy. crop: fill the frame.
     "focus": 0.5,             # crop only: 0 is the left edge, 1 is the right edge.
@@ -268,7 +269,7 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     (out_dir / f"{stem}.srt").write_text(build_srt(words, dur), encoding="utf-8")
 
     z = zoom_expr(clip.get("zoom", style.get("zoom", "none")), dur)
-    extra = []
+    extra, temps = [], []
     focus = float(clip.get("focus", style.get("focus", 0.5)))
     if look:
         png = out_dir / f"{stem}-overlay.png"
@@ -289,6 +290,28 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
             video = (f"[0:v]scale=w='trunc({bw}*{z}/2)*2':h='trunc({bh2}*{z}/2)*2':eval=frame,"
                      f"crop={W}:{rh}:(iw-{W})*{focus:.3f}:(ih-{rh})/2,pad={W}:{H}:0:{top}:black,setsar=1[vb];"
                      f"[vb][1:v]overlay=0:0[v0]")
+        idx = 2
+        if look.get("intro"):
+            # The opening title: shown for a moment, then faded out.
+            ip = out_dir / f"{stem}-intro.png"
+            look["intro"]["image"].save(ip)
+            temps.append(ip)
+            extra += ["-loop", "1", "-framerate", "30", "-t", f"{dur:.3f}", "-i", ip]
+            hold, fade = look["intro"]["hold"], look["intro"]["fade"]
+            video = (video[:-4] + f"[s{idx}];[{idx}:v]format=rgba,fade=t=out:st={hold}:d={fade}:alpha=1[in{idx}];"
+                     f"[s{idx}][in{idx}]overlay=0:0:eof_action=pass[v0]")
+            idx += 1
+        if look.get("tag"):
+            # The brand tag: starts under the title, then slides to its resting place.
+            g = look["tag"]
+            tp = out_dir / f"{stem}-tag.png"
+            g["image"].save(tp)
+            temps.append(tp)
+            extra += ["-i", tp]
+            p = f"(clip((t-{g['at']})/{g['move']}\\,0\\,1))"
+            e = f"({p}*{p}*(3-2*{p}))"
+            (x0, y0), (x1, y1) = g["from"], g["to"]
+            video = (video[:-4] + f"[s{idx}];[s{idx}][{idx}:v]overlay=x='{x0}+({x1 - x0})*{e}':y='{y0}+({y1 - y0})*{e}':eval=frame[v0]")
     elif banner:
         png = out_dir / f"{stem}-overlay.png"
         make_overlay(png, (W, H), clip.get("title", ""), style, f"PART {part} OF {parts}" if multi else "")
@@ -326,6 +349,8 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     ass.unlink()
     if banner or look:
         png.unlink()
+    for tmp in temps:
+        tmp.unlink()
     return {"n": n, "file": f"clips/{out.name}", "srt": f"clips/{stem}.srt", "seconds": round(dur, 1),
             "title": clip.get("title", ""), "muted": len(mutes), "mb": round(out.stat().st_size / 1048576, 1),
             **({"series": clip.get("series", ""), "part": part, "parts": parts} if multi else {})}

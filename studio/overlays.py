@@ -194,28 +194,41 @@ def design(name: str, size: tuple, title: str, style: dict, part_label: str = ""
         cue_y = int((vt + vh) / k) - 70
 
     elif name == "poster":
-        # A loud title in tall letters sits top left. The captions sit in dark boxes.
-        _scrim(img, 0, int(760 * k), 205, 0)
-        _scrim(img, int(1000 * k), int(1320 * k), 0, 90)
+        # A loud title in tall letters opens the clip, top left, then fades after 1.5 seconds.
+        # The yellow brand tag starts under the title, then moves to sit under the captions.
+        _scrim(img, int(940 * k), int(1320 * k), 0, 90)
         _scrim(img, int(1320 * k), H, 90, 90)
-        font, fs, lines = _fit(d, text, "Anton-Regular.ttf", (112 * k, 100 * k, 88 * k, 76 * k), 900 * k)
+        intro = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        di = ImageDraw.Draw(intro)
+        _scrim(intro, 0, int(760 * k), 205, 0)
+        font, fs, lines = _fit(di, text, "Anton-Regular.ttf", (112 * k, 100 * k, 88 * k, 76 * k), 900 * k)
         lines = lines[:2]
         first = 300 * k + fs * 0.86
         for i, line in enumerate(lines):
             last = i == len(lines) - 1
-            d.text((70 * k, first + i * fs * 1.08), line, font=font, fill=accent if last else white, anchor="ls")
-        ty = first + (len(lines) - 1) * fs * 1.08 + 34 * k
+            di.text((70 * k, first + i * fs * 1.08), line, font=font, fill=accent if last else white, anchor="ls")
+        ty = first + (max(1, len(lines)) - 1) * fs * 1.08 + 34 * k
         bf = _font("Montserrat-ExtraBold.ttf", 30 * k)
         mark = _mark(style, int(44 * k))
         tw = d.textlength(tag, font=bf)
-        tag_w = tw + 44 * k + (mark.width + 12 * k if mark else 0)
-        d.rounded_rectangle([70 * k, ty, 70 * k + tag_w, ty + 60 * k], radius=12 * k, fill=accent)
-        x = 70 * k + 22 * k
+        tag_w, tag_h = int(tw + 44 * k + (mark.width + 12 * k if mark else 0)), int(60 * k)
+        chip = Image.new("RGBA", (tag_w, tag_h), (0, 0, 0, 0))
+        dc = ImageDraw.Draw(chip)
+        dc.rounded_rectangle([0, 0, tag_w - 1, tag_h - 1], radius=12 * k, fill=accent)
+        x = 22 * k
         if mark:
-            img.alpha_composite(mark, (int(x), int(ty + 8 * k)))
+            chip.alpha_composite(mark, (int(x), int(8 * k)))
             x += mark.width + 12 * k
-        d.text((x, ty + 30 * k), tag, font=bf, fill=(12, 12, 12, 255), anchor="lm")
-        cap.update(y=1150, size=112, box=True, outline=16, shadow=0)
+        dc.text((x, tag_h / 2), tag, font=bf, fill=(12, 12, 12, 255), anchor="lm")
+        cap.update(y=1085, size=112, box=True, outline=16, shadow=0)
+        cue_y = 950
+        hold = float(style.get("title_seconds", 1.5))
+        extras = {"intro": {"image": intro, "hold": hold, "fade": 0.4},
+                  "tag": {"image": chip, "from": (int(70 * k), int(ty)), "to": (int((W - tag_w) / 2), int(1180 * k)),
+                          "at": hold, "move": 0.5}}
+        if not tag:
+            extras.pop("tag")
+        return {"image": img, "video": video, "cap": cap, "cue_y": cue_y, **extras}
 
     else:
         raise ValueError(f"Unknown overlay: {name}")
