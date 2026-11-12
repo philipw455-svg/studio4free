@@ -146,30 +146,34 @@ def plan(samples: list, cuts: list, dur: float, zoom_at, aspect: float, r: float
             continue
         raw = [p[1] for p in pts]
         xs = [_median(raw[max(0, i - 2):i + 3]) for i in range(len(raw))]
-        if max(xs) - min(xs) < 0.05 or b - a < 1.6:
-            last_c = _median(xs)
-            center.append([at, last_c])
-        else:
-            n = max(2, round((b - a) / 0.8) + 1)
-            keys = []
-            for j in range(n):
-                kt = a + (b - a) * j / (n - 1)
-                near = [x for p, x in zip(pts, xs) if abs(p[0] - kt) <= 0.45]
-                keys.append((kt, sum(near) / len(near) if near else min(zip(pts, xs), key=lambda q: abs(q[0][0] - kt))[1]))
-            # Follow a speaker who moves, but hold still for small shifts so the frame does not drift.
-            last_c = keys[0][1]
-            center.append([at, last_c])
-            for (t0, _), (t1, v1) in zip(keys, keys[1:]):
-                if abs(v1 - last_c) > 0.035:
-                    center.append([max(t0, at + 0.01), v1, t1 - t0])
-                    last_c = v1
+        # Hold the frame still. Move it only when the speaker is about to leave the picture, and then
+        # in one short glide to where they stay next. A frame that follows every lean feels restless.
+        face = _median([p[4] for p in pts])
+        closest = min(1.3, max(1.0, 0.6 * win / face)) if face else 1.0
+        slack = max(0.05, win / (2 * closest) - 0.35 * face)
+        mid = _median(xs)
+        if any(abs(x - mid) > slack for x in xs):
+            mid = _median([x for p, x in zip(pts, xs) if p[0] <= pts[0][0] + 2.0])
+        last_c = mid
+        center.append([at, last_c])
+        i = 0
+        while i < len(pts):
+            t = pts[i][0]
+            if abs(xs[i] - last_c) > slack and i + 1 < len(pts) and abs(xs[i + 1] - last_c) > slack:
+                new = _median([x for p, x in zip(pts, xs) if t <= p[0] <= t + 2.5])
+                if abs(new - last_c) > 0.04:
+                    center.append([max(t - 0.2, at + 0.01), new, 0.7])
+                    last_c = new
+                    while i < len(pts) and pts[i][0] < t + 0.7:
+                        i += 1
+                    continue
+            i += 1
         cons = []
         for t, _, tp, chin, _ in pts:
             c = limit_at(t)
             if c is not None and not any(s0 <= t <= s1 for s0, s1 in skip):
                 cons.append((t, tp, chin + 0.015, c - 0.012))
         # A face may fill up to 60% of the frame width. Past that, the shot takes smaller zoom steps.
-        face = _median([p[4] for p in pts])
         most = max(1.0, 0.6 * win / face) if face else 9.0
 
         def amp_for(z0: float) -> float:
