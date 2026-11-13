@@ -431,10 +431,18 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     anchor = focus_expr(clip.get("anchor", style.get("anchor", 0.3 if stepped else 0.5)))
     drop_steps = clip.get("text_drop", style.get("text_drop", 0))
     has_drop = drop_steps not in (0, None, [])
+    lift_steps = clip.get("lift", style.get("lift", 0))
+    has_lift = lift_steps not in (0, None, [])
 
     def window(bw: int, bh2: int, w: int, h: int, top: int) -> str:
         """The speaker's part of the picture, as the filter that cuts it out."""
-        return zoomed(bw, bh2, z, w, h, focus, anchor)
+        chain = zoomed(bw, bh2, z, w, h, focus, anchor)
+        if has_lift:
+            # A speaker who sits low in the picture: lift the picture, so the face clears the tag and the captions.
+            # A soft, dark copy of the same picture fills the space left under it.
+            chain += (f",split[lf][lb];[lb]scale={w // 8}:{h // 8},boxblur=4:2,scale={w}:{h},eq=brightness=-0.2[lbg];"
+                      f"[lbg][lf]overlay=x=0:y='-({focus_expr(lift_steps)})*{k:.4f}':eval=frame")
+        return chain
 
     if look:
         png = out_dir / f"{stem}-overlay.png"
