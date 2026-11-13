@@ -43,6 +43,20 @@ def channels() -> list:
     return found
 
 
+def queue() -> list:
+    """Every post in Buffer, oldest first: what is posted, what is scheduled, and where each one is live."""
+    org = gql("query { account { organizations { id } } }")["account"]["organizations"][0]["id"]
+    q = """query($org: OrganizationId!, $after: String) { posts(first: 100, after: $after, input: {organizationId: $org, sort: [{field: dueAt, direction: asc}]}) {
+      pageInfo { hasNextPage endCursor } edges { node { id status dueAt sentAt channelService externalLink text error { message } } } } }"""
+    posts, after = [], None
+    while True:
+        r = gql(q, {"org": org, "after": after})["posts"]
+        posts += [e["node"] for e in r["edges"]]
+        if not r["pageInfo"]["hasNextPage"]:
+            return posts
+        after = r["pageInfo"]["endCursor"]
+
+
 CREATE = """mutation($input: CreatePostInput!) {
   createPost(input: $input) {
     ... on PostActionSuccess { post { id text } }

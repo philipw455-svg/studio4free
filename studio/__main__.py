@@ -54,6 +54,7 @@ def main():
     a.add_argument("--job", required=True)
 
     sub.add_parser("channels", help="list the Buffer channels")
+    sub.add_parser("queue", help="list every Buffer post with its status and live link")
 
     a = sub.add_parser("post", help="create the Buffer posts from posting.json")
     a.add_argument("--job", required=True)
@@ -80,6 +81,11 @@ def main():
         plan.schedule(x.job, x.start, x.times, x.tz, x.order, x.flash_days)
     elif x.step == "texts":
         review.texts(x.job)
+    elif x.step == "queue":
+        for p in buffer.queue():
+            first = (p["text"] or "").split("\n")[0][:60]
+            err = f"  ERROR {p['error']['message']}" if p.get("error") else ""
+            print(f"{p['id']}  {p['channelService']:<9} {p['status']:<9} {p['sentAt'] or p['dueAt'] or '-':<24} {p.get('externalLink') or '-'}  {first}{err}")
     elif x.step == "channels":
         for c in buffer.channels():
             print(f"{c['service']:<10} {c.get('displayName') or c['name']}  ({c['id']})")

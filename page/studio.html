@@ -99,6 +99,12 @@ textarea{min-height:92px;resize:vertical;border-radius:20px}
 .clip video,.clip .ph{width:118px;aspect-ratio:9/16;border-radius:18px;background:var(--stage);object-fit:cover;display:block;border:1px solid var(--edge)}
 .clip .ph{display:grid;place-items:center;color:var(--muted);font-weight:500;font-size:12px;text-align:center;padding:6px}
 .clip .side{display:flex;flex-direction:column;gap:9px;min-width:0}
+.cliprow{gap:8px}
+.cliprow h3{font-size:17px}
+.seg{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--glass);border:1px solid var(--edge)}
+.seg button{flex:1 1 0;min-width:0;border:0;background:transparent;border-radius:999px;min-height:42px;font-weight:600;font-size:14.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--solid);color:var(--deep)}
+.from{font-size:13.5px;color:var(--muted);overflow-wrap:anywhere}
 
 /* schedule */
 .day{display:flex;flex-direction:column;gap:8px}
@@ -114,7 +120,7 @@ textarea{min-height:92px;resize:vertical;border-radius:20px}
 .tabs{position:fixed;z-index:40;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));
   max-width:420px;margin-inline:auto;display:flex;gap:4px;padding:5px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid var(--edge);box-shadow:var(--lift);
   -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
-.tabs button{flex:1 1 0;border:0;background:transparent;border-radius:999px;min-height:50px;font-weight:600;font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.tabs button{flex:1 1 0;min-width:0;border:0;background:transparent;border-radius:999px;min-height:50px;font-weight:600;font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .tabs button[aria-current="page"]{background:var(--solid);color:var(--deep)}
 .tabs svg{width:21px;height:21px}
 @media (prefers-reduced-motion:reduce){ .btn{transition:none} }
@@ -131,6 +137,7 @@ textarea{min-height:92px;resize:vertical;border-radius:20px}
 </div>
 <nav class="tabs" aria-label="Sections">
   <button type="button" data-v="jobs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="14" width="5" height="6" rx="1.5"/><rect x="10" y="14" width="5" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>Jobs</button>
+  <button type="button" data-v="queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="18" r="1.2" fill="currentColor"/></svg>Queue</button>
   <button type="button" data-v="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Schedule</button>
   <button type="button" data-v="setup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Setup</button>
 </nav>
@@ -156,7 +163,7 @@ const EDITS = ['Cut filler words','Cut silences','Add captions','Mute strong lan
 const STATUS = { sent:['Waiting for Claude Code','wait'], working:['Claude Code is working','info'], shortlist:['Pick your clips','hot'], cutting:['Cutting clips','info'], checking:['Checking the rules','info'],
   review:['Check the clips','hot'], scheduling:['Sending to Buffer','info'], scheduled:['Scheduled','ok'], done:['Done','ok'], blocked:['Blocked','wait'] };
 
-const S = { view:'jobs', id:null, jobs:new Map(), set:Object.assign({}, DEF), store:'wait', note:'', form:null, showPast:false };
+const S = { view:'jobs', id:null, jobs:new Map(), set:Object.assign({}, DEF), store:'wait', note:'', form:null, showPast:false, open:new Set(), q:'next' };
 let col = null, setDoc = null, comments = null, downloads = null;
 const app = document.getElementById('app'), saveEl = document.getElementById('save'), back = document.getElementById('back');
 const say = t => { saveEl.textContent = t; };
@@ -239,7 +246,7 @@ function render(){
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-current', (S.view === 'job' || S.view === 'new' ? 'jobs' : S.view) === b.dataset.v ? 'page' : 'false'));
   if (S.store === 'wait'){ app.replaceChildren(h('p', {class:'muted'}, 'Loading your studio…')); return; }
   const top = [S.note ? h('p', {class:'note'}, S.note) : null, S.store === 'local' ? h('p', {class:'note'}, 'This view saves on this device only. Open the page inside Claude to keep your work everywhere.') : null];
-  const v = {jobs:vJobs, new:vNew, job:vJob, schedule:vSchedule, setup:vSetup}[S.view] || vJobs;
+  const v = {jobs:vJobs, new:vNew, job:vJob, queue:vQueue, schedule:vSchedule, setup:vSetup}[S.view] || vJobs;
   app.replaceChildren(...top.filter(Boolean), ...v().flat().filter(Boolean));
 }
 function vJobs(){
@@ -314,12 +321,22 @@ function vJob(){
   let sure = false; out.push(h('button', {class:'btn sm warn', type:'button', style:'align-self:flex-start', onclick:e => { if (sure) dropJob(id); else { sure = true; e.currentTarget.textContent = 'Delete this job for good?'; } }}, 'Delete job'));
   return out;
 }
+// On a phone a job can hold a dozen clips, so each clip starts as a short row. A tap opens its editor.
 function clipCard(id, j, c){
+  const k = id + '-' + c.n; if (S.open.has(k)) return clipFull(id, j, c);
+  const note = c.check && c.check.level !== 'clear' && (c.check.notes || [])[0];
+  return h('button', {class:'card cliprow', type:'button', 'aria-label':'Open clip ' + c.n, onclick:() => { S.open.add(k); render(); }},
+    h('div', {class:'row'}, h('span', {class:'pill'}, 'Clip ' + c.n), c.parts > 1 ? h('span', {class:'pill info'}, 'Part ' + c.part + ' of ' + c.parts) : null, c.flash ? h('span', {class:'pill hot'}, 'Noxi flash') : null, rulesPill(c)),
+    h('h3', null, String(c.title || 'Clip ' + c.n)),
+    h('p', {class:'small muted'}, (c.publishAt ? dayShort(c.publishAt) + ' ' + wall(c.publishAt).slice(5, 10).replace('-', '/') + ' at ' + hm(c.publishAt) : 'No post time') + (c.seconds ? ' · ' + Math.round(c.seconds) + 's' : '') + ' · tap to open'),
+    note ? h('p', {class:'small', style:'overflow-wrap:anywhere'}, String(note)) : null);
+}
+function clipFull(id, j, c){
   const save = () => saveJob(id, {clips:j.clips}); const k = id + '-' + c.n;
   const vid = /^[0-9a-f]{32}$/.test(c.asset || '') ? lazyVid(c.asset, true) : h('div', {class:'ph'}, 'Clip ' + c.n, h('br'), c.seconds ? Math.round(c.seconds) + 's' : '');
   const dl = downloads && /^[0-9a-f]{32}$/.test(c.asset || '') ? h('button', {class:'btn sm', type:'button', onclick:async e => { const b = e.currentTarget; b.disabled = true; b.textContent = 'Preparing…';
     try { const blob = await (await fetch('/_blob/' + c.asset)).blob(); await downloads.save({filename:(j.name || 'clip').replace(/[^\w -]+/g, '').trim().replace(/\s+/g, '-') + '-' + c.n + '.mp4', data:blob}); b.textContent = 'Saved'; } catch (err) { b.textContent = 'Download'; } b.disabled = false; }}, 'Download') : null;
-  return h('div', {class:'card'}, h('div', {class:'clip'}, vid, h('div', {class:'side'},
+  return h('div', {class:'card'}, h('div', {class:'row'}, h('button', {class:'btn sm', type:'button', onclick:() => { S.open.delete(k); render(); }}, 'Close clip ' + c.n)), h('div', {class:'clip'}, vid, h('div', {class:'side'},
       h('div', {class:'row'}, h('span', {class:'pill'}, 'Clip ' + c.n), c.parts > 1 ? h('span', {class:'pill info'}, 'Part ' + c.part + ' of ' + c.parts) : null, c.flash ? h('span', {class:'pill hot'}, 'Noxi flash') : null, rulesPill(c), c.status ? h('span', {class:'pill ' + pillFor(c.status)}, /publish/i.test(c.status) ? 'Published' : /schedul/i.test(c.status) ? 'Scheduled' : /draft/i.test(c.status) ? 'Draft' : 'Status') : null),
       c.status ? h('p', {class:'small muted', style:'overflow-wrap:anywhere'}, String(c.status)) : null,
       field('Publish time', null, h('input', {type:'datetime-local', id:'f-at-' + k, value:c.publishAt ? wall(c.publishAt) : '', onchange:e => { c.publishAt = e.target.value ? wallToISO(e.target.value) : ''; save(); }}), 'f-at-' + k), dl)),
@@ -359,10 +376,10 @@ function slotEditor(){
   const s = S.set, sl = slots();
   const keep = () => { s.slots = sl.filter(x => /^\d\d:\d\d$/.test(x.time)); s.times = [...new Set(s.slots.map(x => x.time))].sort(); saveSet(); };
   return h('div', {class:'field'}, h('div', {class:'lab'}, 'Post times each day'), h('p', {class:'hint'}, 'Each post time can belong to one podcast. Clips from that podcast fill that time. Leave the podcast empty to accept any clip.'),
-    sl.map((x, i) => h('div', {class:'row'},
-      h('input', {type:'time', id:'f-sl-t' + i, 'aria-label':'Post time ' + (i + 1), value:x.time, style:'flex:0 0 132px;width:auto', onchange:e => { x.time = e.target.value; keep(); }}),
-      h('input', {type:'text', id:'f-sl-s' + i, 'aria-label':'Podcast for post time ' + (i + 1), placeholder:'Any podcast', value:x.show, style:'flex:1 1 150px;width:auto', onchange:e => { x.show = e.target.value.trim(); keep(); }}),
-      h('button', {class:'btn sm warn', type:'button', 'aria-label':'Remove post time ' + x.time, onclick:() => { sl.splice(i, 1); keep(); render(); }}, 'Remove'))),
+    sl.map((x, i) => h('div', {class:'row', style:'flex-wrap:nowrap;gap:8px'},
+      h('input', {type:'time', id:'f-sl-t' + i, 'aria-label':'Post time ' + (i + 1), value:x.time, style:'flex:0 0 138px;width:auto;padding-inline:10px', onchange:e => { x.time = e.target.value; keep(); }}),
+      h('input', {type:'text', id:'f-sl-s' + i, 'aria-label':'Podcast for post time ' + (i + 1), placeholder:'Any podcast', value:x.show, style:'flex:1 1 0;min-width:0;width:auto', onchange:e => { x.show = e.target.value.trim(); keep(); }}),
+      h('button', {class:'btn sm warn', type:'button', 'aria-label':'Remove post time ' + x.time, style:'flex:none;padding:0 13px', onclick:() => { sl.splice(i, 1); keep(); render(); }}, '\u2715'))),
     h('div', {class:'row'}, h('button', {class:'btn sm', type:'button', disabled:sl.length >= 8, onclick:() => { let hh = 9; while (sl.some(x => x.time === String(hh).padStart(2, '0') + ':00') && hh < 23) hh++; sl.push({time:String(hh).padStart(2, '0') + ':00', show:''}); keep(); render(); }}, 'Add a post time'), h('span', {class:'hint'}, sl.length + (sl.length === 1 ? ' post a day' : ' posts a day'))));
 }
 function coverage(){
@@ -380,6 +397,41 @@ function fillSlots(j){
   const taken = new Set(allClips().map(x => wall(x.c.publishAt))), times = slotTimes(j.show).sort();
   let day = new Date(todayKey() + 'T12:00:00Z'); const next = () => { for (;;){ day = new Date(day.getTime() + 864e5); const key = day.toISOString().slice(0, 10); for (const t of times){ const w = key + 'T' + t; if (!taken.has(w)){ taken.add(w); day = new Date(day.getTime() - 864e5); return w; } } } };
   for (const c of (j.clips || []).slice().sort((a, b) => a.n - b.n)) if (!c.publishAt) c.publishAt = wallToISO(next());
+}
+// The queue: every clip that is posted or waiting to post, with the show and the video it comes from.
+function qState(c){ const t = String(c.status || '').toLowerCase(); return /publish|posted/.test(t) ? ['Posted', 'ok'] : /schedul/.test(t) ? ['Scheduled', 'info'] : /draft/.test(t) ? ['Draft in Buffer', 'wait'] : ['Not in Buffer yet', '']; }
+function liveLinks(c){
+  const out = [], seen = new Set(), add = (name, url) => { if (url && /^https:\/\//.test(url) && !seen.has(url)){ seen.add(url); out.push([name, url]); } };
+  for (const k in (c.live || {})) add(k[0].toUpperCase() + k.slice(1), String(c.live[k] || ''));
+  const m = /((?:www\.)?youtube\.com\/shorts\/[\w-]+)/.exec(String(c.status || '')); if (m) add('YouTube', 'https://' + m[1].replace(/^(?!www\.)/, 'www.'));
+  return out;
+}
+function qRow(x){
+  const c = x.c, j = x.j, st = qState(c), posted = st[0] === 'Posted', ids = c.bufferIds || {};
+  const where = (S.set.services || DEF.services).map(svc => { const k = svc.toLowerCase(), on = !!ids[k] || (posted && new RegExp(svc, 'i').test(c.status || '')) || !!(c.live || {})[k];
+    return h('span', {class:'pill ' + (on ? (posted ? 'ok' : 'info') : '')}, svc + (on ? '' : ' · not yet')); });
+  return h('div', {class:'slot'}, h('span', {class:'t'}, c.publishAt ? hm(c.publishAt) : '--:--'),
+    h('div', {class:'b'}, h('b', null, String(c.title || 'Clip ' + c.n) + (c.parts > 1 ? ' · Part ' + c.part + ' of ' + c.parts : '')),
+      h('span', {class:'from'}, 'From ' + (j.show || 'an unnamed show') + (j.name ? ' · ' + j.name : ''), j.link ? [' · ', h('a', {href:j.link, target:'_blank', rel:'noopener'}, 'source video')] : null),
+      h('div', {class:'row'}, h('span', {class:'pill ' + st[1]}, st[0]), st[0] === 'Not in Buffer yet' ? null : where),
+      h('div', {class:'row'}, hasVid(c) ? h('button', {class:'btn sm', type:'button', onclick:() => player(x)}, 'Watch') : null,
+        liveLinks(c).map(l => h('a', {class:'btn sm', style:'display:inline-flex;align-items:center;text-decoration:none', href:l[1], target:'_blank', rel:'noopener'}, 'Open on ' + l[0])),
+        h('button', {class:'btn sm', type:'button', onclick:() => { S.open.add(x.id + '-' + c.n); go('job', x.id); }}, 'Edit'))));
+}
+function vQueue(){
+  const rows = []; for (const [id, j] of S.jobs) for (const c of (j.clips || [])) rows.push({id, j, c});
+  const when = x => x.c.publishAt ? new Date(x.c.publishAt).getTime() : 9e15;
+  const posted = rows.filter(x => qState(x.c)[0] === 'Posted').sort((a, b) => when(b) - when(a));
+  const next = rows.filter(x => qState(x.c)[0] !== 'Posted').sort((a, b) => when(a) - when(b));
+  const waiting = next.filter(x => qState(x.c)[0] === 'Not in Buffer yet').length, list = S.q === 'posted' ? posted : next;
+  const seg = h('div', {class:'seg', role:'group', 'aria-label':'Which clips to show'}, [['next', 'Up next (' + next.length + ')'], ['posted', 'Posted (' + posted.length + ')']].map(o =>
+    h('button', {type:'button', 'aria-pressed':String(S.q === o[0]), onclick:() => { S.q = o[0]; render(); }}, o[1])));
+  const days = []; let cur = null;
+  for (const x of list){ const k = x.c.publishAt ? dayKey(x.c.publishAt) : ''; if (!cur || cur.k !== k){ cur = {k, items:[]}; days.push(cur); } cur.items.push(x); }
+  return [h('div', {class:'sect'}, h('h2', null, 'Queue'), h('p', {class:'muted'}, 'Every clip that is posted or waiting to post, with the show it comes from. Times are in ' + S.set.tz.replace(/_/g, ' ') + ' time.'), seg,
+      S.q !== 'posted' && waiting ? h('p', {class:'note'}, waiting + (waiting === 1 ? ' clip has' : ' clips have') + ' a post time and ' + (waiting === 1 ? 'is' : 'are') + ' not in Buffer yet. ' + (waiting === 1 ? 'It' : 'They') + ' will not post until a Claude Code session schedules ' + (waiting === 1 ? 'it' : 'them') + '.') : null),
+    list.length ? days.map(d => h('div', {class:'day'}, h('h3', null, d.k ? dayName(d.k) + (d.k === todayKey() ? ' · today' : '') : 'No post time yet'), d.items.map(qRow)))
+      : h('div', {class:'empty'}, h('b', null, S.q === 'posted' ? 'Nothing is posted yet. ' : 'Nothing is waiting. '), S.q === 'posted' ? 'A clip moves here when Buffer publishes it.' : 'Clips appear here when a job gives them a post time.')];
 }
 function vSchedule(){
   const all = allClips(), today = todayKey(), byDay = new Map();
@@ -420,7 +472,7 @@ function vSetup(){
 /* ---------- start ---------- */
 back.onclick = () => go('jobs');
 document.querySelectorAll('.tabs button').forEach(b => { b.onclick = () => go(b.dataset.v); });
-function route(){ const m = /^#job-(.+)$/.exec(location.hash), v = location.hash.slice(1); if (m && S.jobs.has(m[1])){ S.view = 'job'; S.id = m[1]; } else if (['jobs','schedule','setup'].includes(v) && S.view !== 'new'){ S.view = v; S.id = null; } render(); }
+function route(){ const m = /^#job-(.+)$/.exec(location.hash), v = location.hash.slice(1); if (m && S.jobs.has(m[1])){ S.view = 'job'; S.id = m[1]; } else if (['jobs','queue','schedule','setup'].includes(v) && S.view !== 'new'){ S.view = v; S.id = null; } render(); }
 addEventListener('hashchange', route);
 function useLocal(){ S.store = 'local'; S.jobs = new Map(Object.entries(localGet('s4f.jobs', {}))); S.set = Object.assign({}, DEF, localGet('s4f.set', {})); route(); }
 const cl = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
