@@ -1,0 +1,57 @@
+
+/* ===== the working studio: the same language, applied to jobs, the queue and the schedule ===== */
+a{color:var(--ink)}
+.save{font:400 11.5px var(--mono);color:var(--mut);white-space:nowrap;min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}
+.badge{max-width:44vw;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.steps.tabs{grid-template-columns:repeat(5,minmax(0,1fr))}
+.steps.tabs button{cursor:pointer}
+.steps.tabs span{color:var(--mut)}
+.sect{display:flex;flex-direction:column;gap:14px;min-width:0}
+.pagehead{display:flex;flex-direction:column;gap:10px;padding-top:18px}
+.pagehead h2{font-size:clamp(32px,7vw,52px)}
+.pagehead p{color:var(--mut);max-width:52ch}
+.stack{display:flex;flex-direction:column;gap:22px;padding-top:6px;min-width:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grow{flex:1 1 140px;min-width:0}
+.card{border:1px solid var(--slate);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0;width:100%;text-align:left;background:none;color:inherit}
+button.card{transition:border-color .15s}
+button.card:hover{border-color:var(--iron)}
+.card h3{font-weight:500;font-size:18px;letter-spacing:-.01em;line-height:1.25;overflow-wrap:anywhere}
+.pill{display:inline-block;font:500 11.5px var(--mono);border:1px solid var(--iron);border-radius:4px;padding:4px 7px;color:var(--ash);white-space:nowrap}
+.pill.ok{border-color:var(--live);color:var(--live)}
+.pill.wait{border-color:var(--warn);color:var(--warn)}
+.pill.info{border-color:#6bc7ff;color:#6bc7ff}
+.pill.hot{background:var(--white);border-color:var(--white);color:#101010}
+.pill.bad{border-color:#ff7a7a;color:#ff9c9c}
+.empty{border:1px dashed var(--iron);border-radius:8px;padding:20px 16px;color:var(--mut)}
+.empty b{color:var(--ink);font-weight:500}
+.rules ul{margin:6px 0 0;padding-left:18px}
+.rules li{margin-bottom:4px}
+.btn.warn{border-color:#7a3030;color:#ff9c9c}
+.btn.grow{flex:1 1 140px}
+a.btn{text-decoration:none}
+input[type=datetime-local]{width:100%;min-width:0;min-height:48px;background:var(--band);border:1px solid var(--iron);border-radius:8px;padding:11px 14px;font-size:16px}
+.pick{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start;padding-block:12px;border-top:1px solid var(--line)}
+.pick:first-of-type{border-top:0}
+.pick b{font-weight:500;overflow-wrap:anywhere}
+.pick .tcode{grid-column:1/-1;font:400 12px var(--mono);color:var(--mut)}
+.clip{display:grid;grid-template-columns:118px minmax(0,1fr);gap:14px;align-items:start}
+.clip video,.clip .ph{width:118px;aspect-ratio:9/16;border-radius:12px;background:#000;object-fit:cover;display:block;border:1px solid var(--iron)}
+.clip .ph{display:grid;place-items:center;color:var(--mut);font:400 12px var(--mono);text-align:center;padding:6px}
+.clip .side{display:flex;flex-direction:column;gap:9px;min-width:0}
+.cliprow{gap:8px}
+.day{display:flex;flex-direction:column;min-width:0}
+.day>h3{font:500 11.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut);padding-block:18px 10px}
+.slot{display:grid;grid-template-columns:54px minmax(0,1fr);gap:12px;align-items:start;border-top:1px solid var(--line);padding-block:12px}
+.slot.open{color:var(--iron)}
+.slot .t{font:500 13px var(--mono);padding-top:2px}
+.slot .b{display:flex;flex-direction:column;gap:7px;min-width:0}
+.slot .b b{font-weight:500;overflow-wrap:anywhere;line-height:1.3}
+.slot .st,.from{font-size:13.5px;color:var(--mut);overflow-wrap:anywhere}
+.acctrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding-block:14px;border-top:1px solid var(--line)}
+.acctrow .code{font:500 17px var(--mono);letter-spacing:.04em;-webkit-user-select:all;user-select:all;overflow-wrap:anywhere}
+/* a real clip inside the phone frame */
+.phone video.real{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.phone .ph0{position:absolute;inset:0;display:grid;place-items:center;padding:8cqw;text-align:center;font:500 7cqw/1.2 var(--sans);color:var(--ash)}
+.phone.edit .caps.capmark{font-size:6.4cqw;letter-spacing:.06em;transition:none;pointer-events:none}
+.phone.edit video.real{pointer-events:none}
