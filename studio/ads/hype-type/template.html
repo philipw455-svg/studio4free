@@ -8,10 +8,11 @@
     background:linear-gradient(170deg, color-mix(in srgb, var(--text) 14%, var(--ground)), color-mix(in srgb, var(--text) 4%, var(--ground)));
     border:2px solid color-mix(in srgb, var(--text) 26%, transparent);
     box-shadow:0 0 80px color-mix(in srgb, var(--accent) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--text) 40%, transparent);
-    font-family:var(--display);font-weight:700;font-size:74px;line-height:1.08;text-align:center;backface-visibility:hidden}
+    font-family:var(--display);font-weight:700;font-size:calc(74px * var(--wscale));line-height:1.08;text-align:center;backface-visibility:hidden}
   .card img.shot{display:block;height:620px;width:auto;margin:30px auto 0;border-radius:22px}
   .card img.logo{width:240px;height:240px;border-radius:54px;display:block;margin:0 auto 26px}
   .card .link{font-family:var(--body);font-size:48px;color:var(--accent);margin-top:18px}
+  .card.words .link{color:var(--accent)}
   .grid{position:absolute;left:-50%;right:-50%;bottom:-10%;height:60%;transform:rotateX(72deg);transform-origin:50% 100%;
     background-image:linear-gradient(color-mix(in srgb, var(--accent) 30%, transparent) 2px, transparent 2px),linear-gradient(90deg, color-mix(in srgb, var(--accent) 30%, transparent) 2px, transparent 2px);
     background-size:120px 120px;-webkit-mask-image:linear-gradient(to top,#000,transparent);mask-image:linear-gradient(to top,#000,transparent)}
@@ -48,13 +49,14 @@ spots.forEach((s, i) => {
 // flat in the middle of the screen. Between panels the place glides and the camera pulls back, then pushes in.
 const place = (s) => ({ x: s.x, y: s.y, z: s.z, rx: s.rx, ry: s.ry });
 const mix = (a, b, k) => Object.fromEntries(Object.keys(a).map((key) => [key, a[key] + (b[key] - a[key]) * k]));
-const MOVE = 0.55 * pace;
+const MOVE = 0.55 * pace; // a scene's own speed changes the move into it (below)
 S4F.setup((t) => {
   let i = 0;
-  spots.forEach((s, j) => { if (j > 0 && t >= snap(s.f.start) - MOVE) i = j; });
+  spots.forEach((s, j) => { if (j > 0 && t >= snap(s.f.start) - 0.55 * S4F.paceOf(s.f)) i = j; });
   const s = spots[i], prev = spots[Math.max(0, i - 1)];
   const arrive = i === 0 ? 0 : snap(s.f.start);
-  const k = i === 0 ? 1 : tw(t, arrive - MOVE, arrive, ease);
+  const mv = 0.55 * S4F.paceOf(s.f);
+  const k = i === 0 ? 1 : tw(t, arrive - mv, arrive, ease);
   const c = mix(place(prev), place(s), k);
   const swoop = -700 * Math.sin(Math.PI * k) * (i === 0 ? 0 : 1);
   const drift = Math.min(90, Math.max(0, t - arrive) * 30) + (i === 0 ? -260 * (1 - tw(t, 0, 0.8 * pace, out)) : 0);

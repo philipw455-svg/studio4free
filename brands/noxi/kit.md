@@ -30,7 +30,7 @@ Keys: `status` (current or retired), `kind`, `files` (paths inside this brand fo
 - kind: end card
 - files: repo:assets/brand/endcard.mp4
 - also called: endcard.mp4, the Noxi flash, Remember the night end card
-- note: FLAGGED. It shows the retired stacked NO/XI logo and says "iPhone + Android". Clipping jobs still play it as the Noxi flash. It needs a new version with the Column N icon. Philip decides the platform line.
+- note: FLAGGED. It shows the retired stacked NO/XI logo and says "iPhone + Android". Clipping jobs still play it as the Noxi flash. It needs a new version with the Column N icon, and "iPhone + Android" is not true yet (Android is in testing).
 
 ## Mascot lineup
 - status: current
@@ -78,8 +78,15 @@ Keys: `status` (current or retired), `kind`, `files` (paths inside this brand fo
 ## App screenshots
 - status: current
 - kind: screens
-- files: assets/screens/home-graphite-dark.jpg, assets/screens/home-graphite-light.jpg, assets/screens/home-mosaic-dark.jpg, assets/screens/home-mosaic-light.jpg, assets/screens/home-smoke-dark.jpg, assets/screens/home-smoke-light.jpg, assets/screens/home-bone-dark.jpg, assets/screens/home-bone-light.jpg, assets/screens/look.jpg, assets/screens/friends.jpg, assets/screens/home-friends.jpg, assets/screens/everyone.jpg, assets/screens/state-feed.jpg, assets/screens/recap.jpg
-- note: build 22 screens with made-up names and placeholder photos. friends, everyone and state-feed show features not out yet.
+- files: assets/screens/home-graphite-dark.jpg, assets/screens/home-graphite-light.jpg, assets/screens/home-mosaic-dark.jpg, assets/screens/home-mosaic-light.jpg, assets/screens/home-smoke-dark.jpg, assets/screens/home-smoke-light.jpg, assets/screens/home-bone-dark.jpg, assets/screens/home-bone-light.jpg, assets/screens/look.jpg, assets/screens/friends.jpg, assets/screens/home-friends.jpg, assets/screens/everyone.jpg, assets/screens/recap.jpg
+- note: build 22 screens with made-up names and placeholder photos. friends and everyone show features not out yet.
+
+## State feed screenshot
+- status: retired
+- kind: screens
+- files: assets/screens/state-feed.jpg
+- also called: state-feed.jpg
+- note: its placeholder photos show real people's faces. Rule 4 allows no real faces. Kept only so the brain check can spot it.
 
 ## Look: Graphite
 - status: current

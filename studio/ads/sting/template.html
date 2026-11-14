@@ -3,8 +3,8 @@
 <style>
   .glow{position:absolute;inset:0;background:radial-gradient(60% 40% at 50% 38%, color-mix(in srgb, var(--accent) 35%, transparent), transparent 70%)}
   .logo{position:absolute;left:50%;width:300px;height:300px;margin-left:-150px;border-radius:66px;box-shadow:0 0 90px color-mix(in srgb, var(--accent) 45%, transparent)}
-  .line{position:absolute;left:0;right:0;text-align:center;font-family:var(--display);font-weight:700;font-size:78px;line-height:1.08;letter-spacing:-0.5px}
-  .link{position:absolute;left:0;right:0;text-align:center;font-family:var(--body);font-weight:700;font-size:50px;color:var(--accent)}
+  .line{position:absolute;left:0;right:0;text-align:center;font-family:var(--display);font-weight:700;font-size:calc(78px * var(--wscale));line-height:1.08;letter-spacing:-0.5px}
+  .link{position:absolute;left:0;right:0;text-align:center;font-family:var(--body);font-weight:700;font-size:50px;color:var(--accent) !important}
   .cast{position:absolute;left:0;width:100%;object-fit:cover;object-position:50% 0;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 30%);mask-image:linear-gradient(to bottom,transparent,#000 30%)}
 </style></head>
 <body>
@@ -25,14 +25,15 @@ logo.src = file(BRAND.logo || "");
 line.textContent = f0.words || "";
 link.textContent = SB.cta || "";
 if (BRAND.cast && (SB.cast || []).length) cast.src = file(BRAND.cast); else cast.style.display = "none";
-logo.style.top = "150px"; line.style.top = "510px"; link.style.top = "760px";
+logo.style.top = "150px"; link.style.top = "760px";
+line.style.top = S4F.spot(f0, { top: 40, middle: 510, bottom: 900 }, "middle") + "px";
+if ((f0.textSpot || SB.textSpot) === "top") logo.style.top = "420px";
 cast.style.height = "460px"; cast.style.top = (H - 460) + "px";
 const len = SB.length || 2, p = pace;
 S4F.setup((t) => {
   const a = tw(t, 0, 0.45 * p, back);
   logo.style.transform = `scale(${0.6 + 0.4 * a})`; logo.style.opacity = Math.min(1, a * 1.5);
-  const b = tw(t, 0.25 * p, 0.7 * p, out);
-  line.style.opacity = b; line.style.transform = `translateY(${(1 - b) * 40}px)`;
+  S4F.enter(line, t, 0.25 * S4F.paceOf(f0), f0, f0.words || "");
   const c = tw(t, 0.5 * p, 0.9 * p, out);
   link.style.opacity = c; link.style.transform = `translateY(${(1 - c) * 30}px)`;
   const d = tw(t, 0.35 * p, 0.95 * p, back);

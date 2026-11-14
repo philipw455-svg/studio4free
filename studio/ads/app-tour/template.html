@@ -8,11 +8,12 @@
     box-shadow:0 0 0 2px color-mix(in srgb, var(--text) 18%, transparent), 0 0 110px color-mix(in srgb, var(--accent) 45%, transparent)}
   .screen{position:relative;width:100%;height:100%;border-radius:50px;overflow:hidden;background:var(--ground)}
   .screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  .head{position:absolute;left:0;right:0;top:0;text-align:center;font-family:var(--display);font-weight:700;font-size:72px;line-height:1.08}
+  .head{position:absolute;left:0;right:0;top:0;text-align:center;font-family:var(--display);font-weight:700;font-size:calc(72px * var(--wscale));line-height:1.08}
+  .head.band{padding:22px 26px;border-radius:30px;background:color-mix(in srgb, var(--ground) 84%, transparent);backdrop-filter:blur(14px);box-shadow:0 0 0 2px color-mix(in srgb, var(--text) 14%, transparent)}
   .end{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0}
   .end img{width:320px;height:320px;border-radius:70px;box-shadow:0 0 110px color-mix(in srgb, var(--accent) 50%, transparent)}
   .end .name{margin-top:44px;font-family:var(--display);font-weight:700;font-size:104px;letter-spacing:4px}
-  .end .link{margin-top:20px;font-weight:700;font-size:52px;color:var(--accent)}
+  .end .link{margin-top:20px;font-weight:700;font-size:52px;color:var(--accent) !important}
 </style></head>
 <body>
 <div class="glow"></div>
@@ -41,7 +42,7 @@ S4F.setup((t) => {
   phone.style.transform = `translateY(${(1 - rise) * 500}px) scale(${0.94 + 0.06 * rise})`;
   phone.style.opacity = Math.min(1, rise * 2);
   shots.forEach(({ f, im }, i) => {
-    const a = i === 0 ? 1 : tw(t, f.start, f.start + IN, out);
+    const a = i === 0 ? 1 : tw(t, f.start, f.start + 0.5 * S4F.paceOf(f), out);
     const visible = t >= (i === 0 ? -1 : f.start) && t < f.end + IN;
     im.style.display = visible ? "block" : "none";
     im.style.zIndex = i;
@@ -49,9 +50,11 @@ S4F.setup((t) => {
   });
   const cur = frames.filter((f) => !f.endCard).reduce((c, f) => (t >= f.start ? f : c), frames[0]);
   if (cur && t < endAt) {
-    head.textContent = cur.words || "";
-    const h = tw(t, cur.start + 0.1 * pace, cur.start + 0.1 * pace + IN, out);
-    head.style.opacity = h; head.style.transform = `translateY(${(1 - h) * 34}px)`;
+    // The headline sits above the phone, or over its bottom edge when the scene asks for "bottom".
+    const low = (cur.textSpot || SB.textSpot) === "bottom";
+    head.style.top = (low ? 1020 : 0) + "px";
+    head.classList.toggle("band", low);
+    S4F.enter(head, t, cur.start + 0.1 * S4F.paceOf(cur), cur, cur.words || "");
   }
   // End card: the phone and the headline leave, the logo pops in.
   const e = tw(t, endAt, endAt + 0.5 * pace, out);

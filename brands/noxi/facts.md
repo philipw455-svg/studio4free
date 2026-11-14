@@ -11,13 +11,13 @@ To add a fact: write the line, name the source, and ask the owner. Never mark a 
 ## Facts
 
 - Noxi is the group photo app for nights out. · keys: group photo app, photo app, nights out · source: appnoxi.com footer · 2026-11-14 · status: needs Philip's yes
-- Launch day is Friday, November 20, 2026. · keys: launch, launches, launch day, nov 20, november 20, 20, friday · source: appnoxi.com/whats-new countdown (12:00 AM Central, Nov 20) and the clip ad line "free Nov 20" · 2026-11-14 · status: needs Philip's yes
+- Noxi launches on iPhone on Friday, November 20, 2026. · keys: launch, launches, launch day, nov 20, november 20, 20, friday · source: Philip, in chat ("iphone will launch the 20th"); matches the appnoxi.com/whats-new countdown · 2026-11-14 · status: approved
 - Noxi is free to use. Noxi+ is an optional paid plan. · keys: free · source: appnoxi.com ("Free · 18+", "Free to use. Noxi+ if you want more.") · 2026-11-14 · status: needs Philip's yes
 - Noxi is for people 18 and older. · keys: 18+, 18, 18 and older · source: appnoxi.com, Terms of Use ("You must be at least 18 years old") · 2026-11-14 · status: needs Philip's yes
-- Platforms: CONFLICT, keep only one. The site says "iPhone first, with Android later". The end card says "iPhone + Android". · keys: iphone, android · source: appnoxi.com home page and `assets/brand/endcard.mp4` · 2026-11-14 · status: needs Philip's yes
+- Noxi is on iPhone. · keys: iphone, iphone first · source: Philip, in chat, 2026-11-14 · 2026-11-14 · status: approved
+- Android is in testing and comes later. Never say "on Android" or "iPhone + Android" yet. · keys: android, android later, coming to android · source: Philip, in chat ("android is waiting to testers") · 2026-11-14 · status: approved
 - The link is appnoxi.com/go. · keys: appnoxi.com/go, appnoxi.com · source: website `_redirects` · 2026-11-14 · status: needs Philip's yes
-- Photos are deleted 24 hours after the night ends. · keys: 24, 24 hours, delete, deletes, deleted, gone · source: appnoxi.com ("Noxi deletes every photo 24 hours after the night ends") · 2026-11-14 · status: needs Philip's yes
-- Note on the fact above: the build prompt said "Photos delete after 24 hours". The site says 24 hours after the night ends, not 24 hours after the photo. Ads should say it the site's way. · keys: · source: appnoxi.com · 2026-11-14 · status: needs Philip's yes
+- Photos are deleted after 24 hours. · keys: 24, 24 hours, 24hrs, delete, deletes, deleted, gone · source: Philip, in chat ("photos are deleted after 24hrs"). The site words it "24 hours after the night ends". · 2026-11-14 · status: approved
 - Each alert gives one photo or one 5-second video, with a 2-minute window. · keys: 5-second, 5, 2-minute, 2, one shot, one photo, alert, alerts, prompt, prompts · source: Noxi repo `CLAUDE.md` ("What Noxi is") · 2026-11-14 · status: needs Philip's yes
 - The crew gets a recap of the night each morning. · keys: recap, morning, 9 am, 9 · source: Noxi repo `CLAUDE.md`; appnoxi.com ("a 9 AM recap of the whole night") · 2026-11-14 · status: needs Philip's yes
 - Only your group sees your photos. · keys: private, only your crew, only your group · source: appnoxi.com and the Privacy Policy (the state feed is the opt-in exception) · 2026-11-14 · status: needs Philip's yes
@@ -27,3 +27,7 @@ To add a fact: write the line, name the source, and ask the owner. Never mark a 
 - Coming in build 22, not out yet: find friends by their exact username. · keys: friends, username, exact username · source: appnoxi.com/whats-new ("Next update") · 2026-11-14 · status: needs Philip's yes
 - Coming in build 22, not out yet: the Everyone board, opt-in, showing only @username and XP. · keys: everyone board, opt in, opt-in, xp, @username, only · source: appnoxi.com/whats-new ("Next update") · 2026-11-14 · status: needs Philip's yes
 - Coming soon, not out yet: the state feed, one photo from each crew that opts in. · keys: state feed, your state, every crew, coming soon · source: appnoxi.com/whats-new ("Coming soon") · 2026-11-14 · status: needs Philip's yes
+
+## Never say
+Lines that are false today. The brain check reports any line that uses one.
+- iPhone + Android, iPhone and Android, on Android, Android app, available on Android, Google Play, get it on Google Play · source: Philip, in chat, 2026-11-14 ("android is waiting to testers")

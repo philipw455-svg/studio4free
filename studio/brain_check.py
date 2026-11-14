@@ -81,6 +81,9 @@ def check_claims(frames, brain, problems):
         text = fr.get("words") or ""
         if not text.strip():
             continue
+        for bad in brain.never():
+            if has(text, bad):
+                problems.append(Problem(fr["n"], "claim", f'{quote(text)} says "{bad}", which facts.md lists under Never say. It is not true today.'))
         seen = set()
         for tok in claims_in(text, words):
             hits = covering(tok, facts)

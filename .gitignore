@@ -6,3 +6,4 @@ page/overlays-*
 stock/
 .DS_Store
 brands/*/.brain.json
+page/ad-editor/dist/

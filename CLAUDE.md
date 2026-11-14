@@ -275,6 +275,18 @@ Each step saves to the job, and `status` says which step waits. Always pass `if_
    or the post itself). Save `learn: {at, metrics, line}` and run `python -m studio ad learn --brand <id> --job <job.json>`.
    It adds a row to `history.md`, and to `results.md` when there are numbers. Set `status: learned`. Commit the brain change.
 
+**The Ad Scene Editor** (asked for by the owner on 14 Nov 2026: "give me each scene to customize by myself just make it easy"):
+https://claude.ai/artifact/5kkQNAMdfdHW92frBjbWM4 (source `page/ad-editor/editor.html`; build with `python page/ad-editor/build.py`,
+then publish `page/ad-editor/dist/index.html` with every other file in `dist/` as `files` and `root` set to `dist/`, to that URL).
+The owner edits every scene there with a live preview drawn by the real templates: words, seconds, picture, end card, sound effect,
+and per scene the look, light or dark, text size, text spot, text color, how the words come in, and speed.
+Each ad is saved in its database as `storyboards/{id}`, already in storyboard format. "Mark ready to film" sets `status: "ready"`.
+When the owner says "film my ad", read that document with ArtifactData (`out_dir` to save it as JSON), run the brain check on it,
+show every problem, and film it once the owner agrees. The editor's own check covers only short lines, two lines, avoid words and Never say.
+Rebuild and republish the editor whenever a template, a brand's kit or its example storyboards change.
+Per-scene fields the templates read: `look`, `mode`, `textSize` (S, M, L, XL), `textSpot` (top, middle, bottom), `textColor` (text, accent, or a hex),
+`motion` (slide, pop, fade, type, none), `speed` (Calm, Normal, Hyped), `screen`, `mascots`, `endCard`, `sound`.
+
 **The styles** live in `studio/ads/<style>/`, each with a `README.md`: `app-tour`, `mascot-story`, `hype-type`, `sting` and `podcast-endcard`.
 The first four are HTML pages that `studio/film.py` films frame by frame with Playwright at the output size and encodes with ffmpeg at 30 fps.
 `studio/ads/runtime.js` gives them the storyboard, the brand's looks, fonts and files, and the safe area. A picture must depend only on the time.

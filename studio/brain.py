@@ -101,11 +101,18 @@ class Brain:
                 elif k == "source":
                     f.source = v.strip()
                 elif k == "status":
-                    f.approved = v.strip().lower() == "approved"
+                    f.approved = v.strip().lower().startswith("approved")
                 elif re.match(r"^\d{4}-\d\d-\d\d$", p):
                     f.date = p
             out.append(f)
         return out
+
+    def never(self) -> list[str]:
+        """Phrases that are false today (facts.md, "Never say")."""
+        words = []
+        for b in bullets(section(self.text["facts.md"], "Never say")):
+            words += split_list(b.split(" · source:")[0])
+        return words
 
     def avoid(self) -> list[str]:
         words = []

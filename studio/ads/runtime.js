@@ -33,19 +33,51 @@
   const style = document.createElement("style");
   style.textContent = css + `
     :root{--ground:${look.ground};--text:${look.text};--quiet:${look.quiet};--line:${look.line};--accent:${look.accent};
-      --display:${display};--body:${body};--W:${W}px;--H:${H}px}
+      --display:${display};--body:${body};--W:${W}px;--H:${H}px;--wscale:1;--wcolor:${look.text}}
     html,body{margin:0;width:${W}px;height:${H}px;overflow:hidden;background:var(--ground);color:var(--text);font-family:var(--body)}
     .safe{position:absolute;left:${SAFE.left}px;top:${SAFE.top}px;width:${SAFE.right - SAFE.left}px;height:${SAFE.bottom - SAFE.top}px}
-    .words{text-wrap:balance}`;
+    .words{text-wrap:balance;color:var(--wcolor)}`;
   document.head.appendChild(style);
 
   const frames = (SB.frames || []).slice().sort((a, b) => a.start - b.start);
   const frameAt = (t) => { let f = null; for (const x of frames) if (t >= x.start && t < x.end) f = x; return f || frames[frames.length - 1]; };
   const file = (p) => (BRAND.files && BRAND.files[p]) || (BRAND.base ? BRAND.base + p : p);
 
+  // ---- Per-scene settings. Every scene can override the ad's choices; a missing field keeps the ad's choice. ----
+  // look, mode ("dark" | "light"), textSize ("S" | "M" | "L" | "XL"), textSpot ("top" | "middle" | "bottom"),
+  // textColor ("text" | "accent" | "#hex"), motion ("pop" | "slide" | "fade" | "type" | "none"), speed ("Calm" | "Normal" | "Hyped").
+  const SIZES = { S: 0.8, M: 1, L: 1.22, XL: 1.45 };
+  const colorsOf = (f) => {
+    const L = BRAND.looks[(f && f.look) || SB.look] || BRAND.looks[Object.keys(BRAND.looks)[0]] || {};
+    return L[(f && f.mode) || SB.mode || "dark"] || look;
+  };
+  let lastScene = null;
+  function applyScene(f) {
+    if (f === lastScene) return;
+    lastScene = f;
+    const c = colorsOf(f), r = document.documentElement.style;
+    r.setProperty("--ground", c.ground); r.setProperty("--text", c.text); r.setProperty("--quiet", c.quiet);
+    r.setProperty("--line", c.line); r.setProperty("--accent", c.accent);
+    r.setProperty("--wscale", SIZES[(f && f.textSize) || SB.textSize] || 1);
+    const col = (f && f.textColor) || SB.textColor || "text";
+    r.setProperty("--wcolor", col === "accent" ? c.accent : col === "text" ? c.text : col);
+  }
+  const paceOf = (f) => ({ Calm: 1.5, Normal: 1, Hyped: 0.65 }[(f && f.speed) || SB.pace] || 1);
+  // spot: a template gives its own y for each spot; the scene picks one.
+  const spot = (f, ys, fallback) => ys[(f && f.textSpot) || SB.textSpot || fallback] ?? ys[fallback];
+  // enter: how a scene's words come in, from the scene's start time.
+  function enter(el, t, start, f, text) {
+    const kind = (f && f.motion) || SB.motion || "slide", p = paceOf(f), a = tw(t, start, start + 0.45 * p, kind === "pop" ? back : out);
+    if (text != null) el.textContent = kind === "type" ? text.slice(0, Math.round(text.length * tw(t, start, start + 0.7 * p, (x) => x))) || "\u00a0" : text;
+    if (kind === "none") { el.style.opacity = 1; el.style.transform = ""; return; }
+    el.style.opacity = kind === "type" ? (t >= start ? 1 : 0) : Math.min(1, a * 1.4);
+    el.style.transform = kind === "pop" ? `scale(${0.6 + 0.4 * a})` : kind === "slide" ? `translateY(${(1 - a) * 40}px)` : "";
+  }
+
   let draw = () => {};
   const S4F = { SB, BRAND, W, H, SAFE, look, pace, clamp, ease, out, back, tw, lerp, seeded, frames, frameAt, file,
-    setup(fn) { draw = fn; } };
+    paceOf, spot, enter, colorsOf,
+    setup(fn) { draw = (t) => { applyScene(frameAt(t)); fn(t); }; } };
   window.S4F = S4F;
   window.seek = (t) => { draw(t); return true; };
 

@@ -138,6 +138,16 @@ class BrainTest(unittest.TestCase):
         self.assertEqual(self.kinds(p), [(None, "brand")])
 
 
+class NoxiNeverSayTest(unittest.TestCase):
+    def test_android_is_not_out(self):
+        brain = B.Brain.load(B.BRANDS / "noxi")
+        p = check(brain, {"brand": "noxi", "postAt": "2026-11-21T12:00:00-06:00",
+                          "frames": [frame(1, 0, 3, "Free on iPhone + Android")]})
+        self.assertTrue(any("Never say" in x.text for x in p))
+        p = check(brain, {"brand": "noxi", "postAt": "2026-11-21T12:00:00-06:00", "frames": [frame(1, 0, 3, "Free on iPhone")]})
+        self.assertEqual([x.text for x in p if x.kind == "claim" and "yes" not in x.text], [])
+
+
 class NoxiSeedTest(unittest.TestCase):
     """The real Noxi brain parses, and the build 22 storyboard gets the problems we know it has."""
 

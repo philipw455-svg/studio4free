@@ -33,7 +33,7 @@ class NoxiJobTest(unittest.TestCase):
 
     def test_context_card(self):
         card = context_card(self.brain, {"about": "the 24 hours before photos are deleted", "postWhen": "2026-11-18T12:15:00-06:00"})
-        self.assertIn("Photos are deleted 24 hours after the night ends.", card)
+        self.assertIn("Photos are deleted after 24 hours. (approved", card)
         self.assertIn("2026-11-20: Noxi launch day", card)
         self.assertIn("Your nights just got a glow-up", card)
         self.assertIn("Retired, never use", card)

@@ -7,17 +7,17 @@
   .panel.day{background:linear-gradient(180deg,#9FB7E6,#E9D7F0)}
   .panel .who{position:absolute;bottom:0;height:88%;display:flex;align-items:flex-end;justify-content:center;left:0;right:0;gap:0}
   .panel .who div{flex:0 0 auto;height:100%;background-repeat:no-repeat}
-  .cap{position:absolute;left:0;right:0;top:0;padding:26px 34px;background:var(--text);color:var(--ground);border-radius:22px;
-    font-family:var(--body);font-weight:800;font-size:56px;line-height:1.12;text-align:center;box-shadow:10px 10px 0 color-mix(in srgb, var(--accent) 70%, transparent)}
+  .cap{position:absolute;left:0;right:0;top:0;padding:26px 34px;background:var(--text);color:var(--ground) !important;border-radius:22px;
+    font-family:var(--body);font-weight:800;font-size:calc(56px * var(--wscale));line-height:1.12;text-align:center;box-shadow:10px 10px 0 color-mix(in srgb, var(--accent) 70%, transparent)}
   .end{position:absolute;inset:0;opacity:0}
   .end img.logo{position:absolute;left:50%;top:300px;width:280px;height:280px;margin-left:-140px;border-radius:62px}
-  .end .link{position:absolute;left:0;right:0;top:640px;text-align:center;font-weight:800;font-size:58px;color:var(--accent)}
+  .end .link{position:absolute;left:0;right:0;top:640px;text-align:center;font-weight:800;font-size:58px;color:var(--accent) !important}
   .end img.cast{position:absolute;left:0;bottom:0;width:100%;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 30%);mask-image:linear-gradient(to bottom,transparent,#000 30%)}
 </style></head>
 <body>
 <div class="dots" id="dots"></div>
 <div id="panels"></div>
-<div class="safe"><div class="cap words" id="cap" style="top:960px"></div></div>
+<div class="safe"><div class="cap words" id="cap"></div></div>
 <div class="end" id="end"><img class="logo" id="logo" alt=""><div class="link words" id="link"></div><img class="cast" id="cast" alt=""></div>
 <script src="../runtime.js"></script>
 <script>
@@ -67,9 +67,10 @@ S4F.setup((t) => {
     p.style.zIndex = i;
   }
   if (cur) {
-    const full = cur.words || "", n = Math.round(full.length * tw(t, cur.start + 0.25 * pace, cur.start + 0.25 * pace + 0.6, (x) => x));
-    cap.textContent = full.slice(0, n) || " ";
-    cap.style.opacity = t < cur.start + 0.2 * pace ? 0 : 1;
+    // The caption types on unless the scene picks another motion. Its spot: under the panel (bottom), in the middle, or over the top.
+    cap.style.top = S4F.spot(cur, { top: 20, middle: 600, bottom: 960 }, "bottom") + "px";
+    const motion = cur.motion || SB.motion || "type";
+    S4F.enter(cap, t, cur.start + 0.25 * S4F.paceOf(cur), Object.assign({}, cur, { motion }), cur.words || "");
   } else cap.style.opacity = 0;
   const e = tw(t, endAt, endAt + 0.5 * pace, out);
   end.style.opacity = t >= endAt ? e : 0;
