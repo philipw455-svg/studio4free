@@ -230,5 +230,8 @@ Render with ffmpeg, upload the result as one clip, and set `status: review`.
 - On 12 Nov 2026 the owner had every unpublished clip cleared from Buffer and from the page. Five published YouTube posts remain. Do not bring the cleared clips back.
 - The owner must say that each source may be clipped. A job's `rights` field holds that answer. When it is empty, ask before you schedule anything.
 - Publish page changes from `page/studio.html` to the page URL above, so the link stays the same.
+- The live page is the master copy. More than one session publishes it. Before you change the page, read the live artifact,
+  make `page/studio.html` match it exactly, and build on that. Never publish an older copy over the live page.
+  On 14 Nov 2026 the owner asked that the walkthrough, the software and the look stay an exact copy of the live page.
 - The older page, Video Brief Studio, still holds the first 56 renders. Do not change it.
 - The page uses one committed look: liquid glass, the Outfit font, cards in a stack, and a clip preview row on the Jobs screen. Keep that look when you change the page.

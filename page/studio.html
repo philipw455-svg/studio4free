@@ -123,6 +123,25 @@ textarea{min-height:92px;resize:vertical;border-radius:20px}
 .tabs button{flex:1 1 0;min-width:0;border:0;background:transparent;border-radius:999px;min-height:50px;font-weight:600;font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .tabs button[aria-current="page"]{background:var(--solid);color:var(--deep)}
 .tabs svg{width:21px;height:21px}
+.tabs[hidden]{display:none}
+
+/* accounts, the walkthrough and the overlay previews */
+.keybig{font-weight:700;font-size:clamp(22px,7.6vw,34px);line-height:1.2;letter-spacing:.03em;text-align:center;font-variant-numeric:tabular-nums;-webkit-user-select:all;user-select:all;overflow-wrap:anywhere}
+.prog{height:6px;border-radius:999px;background:var(--glass-2);overflow:hidden}
+.prog i{display:block;height:100%;border-radius:999px;background:var(--solid)}
+.ovs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ovt{display:flex;flex-direction:column;gap:6px;min-width:0;padding:8px 8px 10px;text-align:left;border:1px solid var(--edge);background:var(--glass);border-radius:22px}
+.ovt[aria-pressed="true"]{background:var(--solid);color:var(--deep);border-color:transparent}
+.ovt>b{font-weight:600;font-size:15px;padding-inline:4px}
+.ovd{font-size:12.5px;line-height:1.3;padding-inline:4px;opacity:.86}
+/* a 9:16 stand-in for the video. Children are placed in percent of the real 1080 x 1920 frame, and text scales with the tile (cqw). */
+.ovp,.ovp .vid{background:radial-gradient(ellipse 20% 11.25% at 50% 40%,#e3b190 98%,transparent),radial-gradient(ellipse 44% 22% at 50% 76%,#31496b 98%,transparent),linear-gradient(165deg,#7c8798,#39414f)}
+.ovp .vid.w{background:radial-gradient(ellipse 9% 16% at 50% 42%,#e3b190 98%,transparent),radial-gradient(ellipse 20% 34% at 50% 100%,#31496b 98%,transparent),linear-gradient(165deg,#7c8798,#39414f)}
+.ovp{display:block;position:relative;aspect-ratio:9/16;overflow:hidden;border-radius:16px;container-type:inline-size;color:#fff;font-weight:700;font-size:6px}
+.ovp i{position:absolute;display:block;font-style:normal;white-space:nowrap}
+.ovp .tx{transform:translateY(-50%);line-height:1.15;overflow:hidden;text-overflow:ellipsis}
+.ovp b{font-weight:inherit}
+@media (min-width:600px){ .ovs{grid-template-columns:repeat(3,minmax(0,1fr))} }
 @media (prefers-reduced-motion:reduce){ .btn{transition:none} }
 </style>
 
@@ -135,7 +154,7 @@ textarea{min-height:92px;resize:vertical;border-radius:20px}
   </div>
   <div id="app" class="sect"><p class="muted">Loading your studio…</p></div>
 </div>
-<nav class="tabs" aria-label="Sections">
+<nav class="tabs" aria-label="Sections" hidden>
   <button type="button" data-v="jobs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="14" width="5" height="6" rx="1.5"/><rect x="10" y="14" width="5" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>Jobs</button>
   <button type="button" data-v="queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="18" r="1.2" fill="currentColor"/></svg>Queue</button>
   <button type="button" data-v="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Schedule</button>
@@ -154,7 +173,9 @@ function h(tag, attrs, ...kids){
   return e;
 }
 const DEF = { times:['12:15','17:00'], tz:'America/Chicago', services:['YouTube','TikTok'], brand:'', descTail:'',
-  count:'10', len:'20 to 40 seconds', kinds:['Strong opinions','Funny moments','Emotional moments'], fit:'Black banner with title and brand', zoom:'Smooth', captions:'Yes', language:'Mute it', parts:'Split long stories into parts', overlay:'Poster', flashDays:['Tuesday','Friday'], comment:'' };
+  count:'10', len:'20 to 40 seconds', kinds:['Strong opinions','Funny moments','Emotional moments'], fit:'Black banner with title and brand', zoom:'Smooth', captions:'Yes', language:'Mute it', parts:'Split long stories into parts', overlay:'Poster', flashDays:['Tuesday','Friday'], comment:'', channels:{youtube:'', instagram:'', tiktok:''}, buffer:'' };
+// DEF is what a missing field of settings/main means, so the first (legacy) account keeps it. A new account starts cleaner.
+const defaults = legacy => Object.assign({}, DEF, legacy ? null : {services:['YouTube','Instagram'], flashDays:[]});
 const COUNTS = ['3','5','10','20','As many as are good'];
 const LENS = ['Under 20 seconds','20 to 40 seconds','40 to 60 seconds','Whatever the moment needs'];
 const KINDS = ['Strong opinions','Funny moments','Stories','Advice and tips','Emotional moments','Surprising facts','Disagreements','Quotable one-liners'];
@@ -163,9 +184,12 @@ const EDITS = ['Cut filler words','Cut silences','Add captions','Mute strong lan
 const STATUS = { sent:['Waiting for Claude Code','wait'], working:['Claude Code is working','info'], shortlist:['Pick your clips','hot'], cutting:['Cutting clips','info'], checking:['Checking the rules','info'],
   review:['Check the clips','hot'], scheduling:['Sending to Buffer','info'], scheduled:['Scheduled','ok'], done:['Done','ok'], blocked:['Blocked','wait'] };
 
-const S = { view:'jobs', id:null, jobs:new Map(), set:Object.assign({}, DEF), store:'wait', note:'', form:null, showPast:false, open:new Set(), q:'next' };
-let col = null, setDoc = null, comments = null, downloads = null;
-const app = document.getElementById('app'), saveEl = document.getElementById('save'), back = document.getElementById('back');
+// key and acct are the open account. gate is the sign-in screens (null inside the studio). wiz is the walkthrough step (0 when closed).
+// old says whether data from before accounts still waits to be moved into one. ALL holds every job; S.jobs holds the open account's.
+const S = { view:'jobs', id:null, jobs:new Map(), set:Object.assign({}, DEF), store:'wait', note:'', form:null, showPast:false, open:new Set(), q:'next',
+  key:null, acct:null, gate:{mode:'in', key:'', msg:'', remember:true}, wiz:0, busy:true, old:null };
+let db = null, col = null, setDoc = null, acctDoc = null, comments = null, downloads = null, ALL = new Map(), setLS = 's4f.set', watches = [];
+const app = document.getElementById('app'), saveEl = document.getElementById('save'), back = document.getElementById('back'), tabs = document.querySelector('.tabs');
 const say = t => { saveEl.textContent = t; };
 const ytOK = u => /^https:\/\/((www\.|m\.)?youtube\.com\/(watch\?|shorts\/|live\/)|youtu\.be\/)[\w?=&%.\-/]+$/i.test(String(u).trim());
 
@@ -185,17 +209,88 @@ function localGet(k, d){ try { return JSON.parse(localStorage.getItem(k)) || d; 
 function localSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 async function saveJob(id, patch){
   const j = S.jobs.get(id); if (!j) return; Object.assign(j, patch, {updatedAt:Date.now()}); say('Saving…');
-  try { if (S.store === 'db') await col.doc(id).update(Object.assign({}, patch, {updatedAt:j.updatedAt})); else localSet('s4f.jobs', Object.fromEntries(S.jobs)); say(S.store === 'db' ? 'Saved' : 'Saved on this device only'); }
+  try { if (S.store === 'db') await col.doc(id).update(Object.assign({}, patch, {updatedAt:j.updatedAt})); else localSet('s4f.jobs', Object.fromEntries(ALL)); say(S.store === 'db' ? 'Saved' : 'Saved on this device only'); }
   catch (e) { say('Not saved. Check your connection and change it again.'); }
 }
 async function addJob(doc){
-  const now = Date.now(); Object.assign(doc, {createdAt:now, updatedAt:now}); let id;
+  const now = Date.now(); Object.assign(doc, {account:S.key, createdAt:now, updatedAt:now}); let id;
   try { if (S.store === 'db'){ const ref = col.doc(); id = ref.id; await ref.set(doc); } else { id = 'l' + now.toString(36); }
-    S.jobs.set(id, doc); if (S.store !== 'db') localSet('s4f.jobs', Object.fromEntries(S.jobs)); return id; }
+    S.jobs.set(id, doc); ALL.set(id, doc); if (S.store !== 'db') localSet('s4f.jobs', Object.fromEntries(ALL)); return id; }
   catch (e) { say('The job could not be saved. Check your connection.'); return null; }
 }
-async function dropJob(id){ S.jobs.delete(id); try { if (S.store === 'db') await col.doc(id).delete(); else localSet('s4f.jobs', Object.fromEntries(S.jobs)); } catch (e) { say('The job could not be deleted.'); } go('jobs'); }
-async function saveSet(){ say('Saving…'); try { if (S.store === 'db') await setDoc.set(S.set); else localSet('s4f.set', S.set); say(S.store === 'db' ? 'Saved' : 'Saved on this device only'); } catch (e) { say('Settings were not saved.'); } }
+async function dropJob(id){ S.jobs.delete(id); ALL.delete(id); try { if (S.store === 'db') await col.doc(id).delete(); else localSet('s4f.jobs', Object.fromEntries(ALL)); } catch (e) { say('The job could not be deleted.'); } go('jobs'); }
+async function saveSet(){ say('Saving…'); try { if (S.store === 'db') await setDoc.set(S.set); else localSet(setLS, S.set); say(S.store === 'db' ? 'Saved' : 'Saved on this device only'); } catch (e) { say('Settings were not saved.'); } }
+
+/* ---------- accounts ---------- */
+// The account number is the only credential. The page reads and watches accounts/<the entered key> and never lists the collection.
+const KEYCH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function newKey(){ let s = ''; const lim = 256 - 256 % KEYCH.length;   // bytes at or over lim are dropped, so every character is equally likely
+  while (s.length < 8) for (const b of crypto.getRandomValues(new Uint8Array(16))) if (b < lim && s.length < 8) s += KEYCH[b % KEYCH.length];
+  return 'S4F-' + s.slice(0, 4) + '-' + s.slice(4); }
+function normKey(v){ let s = String(v == null ? '' : v).toUpperCase().replace(/[\s-]/g, ''); if (s.length === 11 && s.startsWith('S4F')) s = s.slice(3);
+  return s.length === 8 && [...s].every(c => KEYCH.includes(c)) ? 'S4F-' + s.slice(0, 4) + '-' + s.slice(4) : ''; }
+// A job with no account field is from before accounts. It belongs to the legacy account. Old jobs are never rewritten.
+const mine = (j, key, legacy) => !!key && (j.account === key || (!!legacy && !j.account));
+function scope(){ S.jobs = new Map([...ALL].filter(([, j]) => mine(j, S.key, S.acct && S.acct.legacy))); }
+const typing = () => { const a = document.activeElement; return !!a && /INPUT|TEXTAREA/.test(a.tagName); };
+// Draw again after a change from the database, unless that would take a field or a shown account number away from the owner.
+function soft(){ if (S.store === 'wait' || S.busy || typing() || (S.gate && (S.gate.mode === 'show' || S.gate.wait)) || (S.view === 'new' && !S.gate && !S.wiz)) return; render(); }
+// render() builds new elements, so a field the owner was in has to get focus again.
+const refocus = id => { const el = document.getElementById(id); if (!el) return; el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) {} };
+// db.d.ts: "unavailable", and any code it does not list, is worth another try. The codes below cannot succeed on this page load.
+const again = e => !/^(invalid_argument|quota_exceeded|revoked|not_granted|capability_disabled|capability_removed|transform_error)$/.test((e && e.code) || '');
+// Local mode reads the stored accounts on every use, so a second tab never writes back an old copy.
+const putAcct = (k, a) => localSet('s4f.accounts', Object.assign(localGet('s4f.accounts', {}), {[k]:a}));
+const NOLOCAL = 'This view only sees accounts made on this device. None of them has that number. Open the page inside Claude to reach your studio.';
+const oldJobs = () => [...ALL.values()].filter(j => !j.account).length;
+const offerOld = () => !!S.old && !S.old.claimed && (S.old.main || oldJobs() > 0);
+const unwatch = () => { for (const u of watches) u(); watches = []; };
+function enter(key, a, set){
+  unwatch(); S.key = key; S.acct = Object.assign({}, a); S.set = Object.assign(defaults(a.legacy), set); setLS = a.legacy ? 's4f.set' : 's4f.set.' + key;
+  if (db){ acctDoc = db.doc('accounts/' + key); setDoc = db.doc(a.legacy ? 'settings/main' : 'settings/' + key);
+    watches = [acctDoc.onSnapshot(x => { if (S.key !== key || S.gate) return; if (!x.exists){ if (!x.metadata.fromCache) signOut('That account no longer exists.'); return; } S.acct = Object.assign({}, x.data()); soft(); }, () => {}),
+      setDoc.onSnapshot(x => { if (S.key !== key) return; if (x.exists) S.set = Object.assign(defaults(a.legacy), x.data()); soft(); }, () => {})]; }
+  scope();
+}
+// Returns '' when the account is open, 'none' when no account has that number, or a sentence to show.
+// tries: how many more times to ask, 3 seconds apart, when the store does not answer. Start-up uses it; a typed number does not.
+async function openAcct(key, tries){
+  try { let a, set;
+    if (db){ const x = await db.doc('accounts/' + key).get(); if (!x.exists) return 'none'; a = x.data();
+      const sx = await db.doc(a.legacy ? 'settings/main' : 'settings/' + key).get(); set = sx.exists ? sx.data() : {}; }
+    else { a = localGet('s4f.accounts', {})[key]; if (!a) return 'none'; set = localGet(a.legacy ? 's4f.set' : 's4f.set.' + key, {}); }
+    enter(key, a, set); return ''; }
+  catch (e) { if (tries > 0 && again(e)){ await new Promise(ok => setTimeout(ok, 3000)); return openAcct(key, tries - 1); }
+    return 'Your studio cannot be reached. Check your connection and try again.'; }
+}
+// Everything is read before anything is written. When a write fails, the half-made account is removed, so no hidden account stays behind.
+async function makeAcct(name, legacy, remember){
+  const key = newKey(), a = Object.assign({name, createdAt:Date.now()}, legacy ? {legacy:true, setupDone:true} : null); let set = defaults(false);
+  const taken = 'Your existing studio is already in an account. Sign in with its number.';
+  try {
+    if (db){
+      // shortcut: two devices that move the old studio in the same second both get an account for it; use acquire() on meta/legacy if that ever happens.
+      if (legacy){ const [m, sx] = await Promise.all([db.doc('meta/legacy').get(), db.doc('settings/main').get()]); if (m.exists){ S.old = {claimed:true, main:sx.exists}; return taken; } set = sx.exists ? sx.data() : {}; }
+      await db.doc('accounts/' + key).set(a);
+      if (legacy) await db.doc('meta/legacy').set({claimed:true, at:Date.now()}); else await db.doc('settings/' + key).set(set);
+    } else {
+      if (legacy && localGet('s4f.legacyClaimed', false)){ S.old = {claimed:true, main:true}; return taken; }   // another tab moved it since this one loaded
+      putAcct(key, a); if (legacy){ localSet('s4f.legacyClaimed', true); set = localGet('s4f.set', {}); } else localSet('s4f.set.' + key, set); }
+  } catch (e) {
+    // shortcut: when this delete fails too, the hidden account stays. Nobody has its number, so it opens nothing.
+    if (db) db.doc('accounts/' + key).delete().catch(() => {});
+    return 'The account could not be created. Check your connection and try again.'; }
+  if (legacy) S.old = {claimed:true, main:true};
+  enter(key, a, set); localSet('s4f.key', remember ? key : ''); S.gate = {mode:'show', key}; return '';
+}
+async function saveAcct(patch){ Object.assign(S.acct, patch); say('Saving…');
+  try { if (db) await acctDoc.update(patch); else putAcct(S.key, S.acct); say(db ? 'Saved' : 'Saved on this device only'); } catch (e) { say('The account was not saved.'); } }
+function signOut(msg, forget){ unwatch(); if (forget) localSet('s4f.key', ''); S.key = null; S.acct = null; S.wiz = 0; S.jobs = new Map(); S.set = Object.assign({}, DEF); S.gate = {mode:'in', key:'', msg:msg || '', remember:true}; go('jobs'); }
+function copyBtn(key, el, id){
+  return h('button', {class:'btn', type:'button', id, onclick:e => { const b = e.currentTarget;
+    const pick = () => { try { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (err) {} b.textContent = 'Selected. Copy it now.'; };
+    try { navigator.clipboard.writeText(key).then(() => { b.textContent = 'Copied'; }, pick); } catch (err) { pick(); } }}, 'Copy');
+}
 async function tell(el, text){
   if (!comments) return 'none';
   try { const can = await comments.canSendToClaude(); if (can !== 'available') return can; const anchor = await comments.anchorFor(el); await comments.sendToClaude({anchor, text}); return 'sent'; }
@@ -204,11 +299,12 @@ async function tell(el, text){
 const told = r => r === 'sent' ? 'Sent to Claude Code. It starts without you asking.' : 'Saved. No Claude Code session is listening. Open Claude Code in the studio4free repository and say "run the studio jobs".';
 
 /* ---------- small widgets ---------- */
-function chips(opts, cur, multi, onPick){
+// With id, the buttons get the stable ids id-0, id-1 and so on.
+function chips(opts, cur, multi, onPick, id){
   const g = h('div', {class:'chips', role:'group'});
-  for (const o of opts){ const on = multi ? (cur || []).includes(o) : cur === o;
-    g.append(h('button', {class:'chip', type:'button', 'aria-pressed':String(on), onclick:e => { const b = e.currentTarget, now = b.getAttribute('aria-pressed') !== 'true';
-      if (!multi) for (const x of g.children) x.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-pressed', String(now)); onPick(o, now); }}, o)); }
+  opts.forEach((o, i) => { const on = multi ? (cur || []).includes(o) : cur === o;
+    g.append(h('button', {class:'chip', type:'button', id:id ? id + '-' + i : null, 'aria-pressed':String(on), onclick:e => { const b = e.currentTarget, now = b.getAttribute('aria-pressed') !== 'true';
+      if (!multi) for (const x of g.children) x.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-pressed', String(now)); onPick(o, now); }}, o)); });
   return g;
 }
 const field = (label, hint, ctl, id) => h('div', {class:'field'}, id ? h('label', {for:id}, label) : h('div', {class:'lab'}, label), hint ? h('p', {class:'hint'}, hint) : null, ctl);
@@ -242,11 +338,12 @@ function player(x){
 /* ---------- views ---------- */
 function go(v, id){ S.view = v; S.id = id || null; S.form = null; try { location.hash = v === 'job' ? 'job-' + id : v; } catch (e) {} render(); scrollTo(0, 0); }
 function render(){
-  back.hidden = !(S.view === 'job' || S.view === 'new');
+  const wait = S.store === 'wait' || S.busy, bare = wait || !!S.gate || !!S.wiz;   // bare: sign-in and the walkthrough have no tab bar
+  tabs.hidden = bare; back.hidden = bare || !(S.view === 'job' || S.view === 'new');
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-current', (S.view === 'job' || S.view === 'new' ? 'jobs' : S.view) === b.dataset.v ? 'page' : 'false'));
-  if (S.store === 'wait'){ app.replaceChildren(h('p', {class:'muted'}, 'Loading your studio…')); return; }
+  if (wait){ app.replaceChildren(...[S.note ? h('p', {class:'note'}, S.note) : null, h('p', {class:'muted'}, 'Loading your studio…')].filter(Boolean)); return; }
   const top = [S.note ? h('p', {class:'note'}, S.note) : null, S.store === 'local' ? h('p', {class:'note'}, 'This view saves on this device only. Open the page inside Claude to keep your work everywhere.') : null];
-  const v = {jobs:vJobs, new:vNew, job:vJob, queue:vQueue, schedule:vSchedule, setup:vSetup}[S.view] || vJobs;
+  const v = S.gate ? vGate : S.wiz ? vWiz : {jobs:vJobs, new:vNew, job:vJob, queue:vQueue, schedule:vSchedule, setup:vSetup}[S.view] || vJobs;
   app.replaceChildren(...top.filter(Boolean), ...v().flat().filter(Boolean));
 }
 function vJobs(){
@@ -356,6 +453,7 @@ function rulesBox(c, save){
 const weekday = iso => new Date(dayKey(iso) + 'T12:00:00Z').toLocaleDateString('en-US', {weekday:'long', timeZone:'UTC'});
 function flashIssues(clips){
   const days = S.set.flashDays || DEF.flashDays, out = [];
+  if (!(S.acct && S.acct.legacy)) return out;   // the Noxi flash belongs to the first account only. CLAUDE.md tells a session never to cut it for another one.
   for (const c of clips){ if (!c.publishAt || /publish/i.test(c.status || '')) continue; const want = days.includes(weekday(c.publishAt));
     if (want && !c.flash) out.push('Clip ' + c.n + ' posts on a ' + weekday(c.publishAt) + ' and has no Noxi flash yet.');
     if (!want && c.flash) out.push('Clip ' + c.n + ' has the Noxi flash, and it posts on a ' + weekday(c.publishAt) + '.'); }
@@ -373,14 +471,15 @@ const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').
 function slotTimes(show){ const all = slots(); let m = String(show || '').trim() ? all.filter(x => same(x.show, show)) : []; if (!m.length) m = all.filter(x => !x.show); if (!m.length) m = all; return [...new Set(m.map(x => x.time))]; }
 const shows = () => [...new Set([...slots().map(x => x.show), ...[...S.jobs.values()].map(j => String(j.show || '').trim())].filter(Boolean))];
 function slotEditor(){
-  const s = S.set, sl = slots();
-  const keep = () => { s.slots = sl.filter(x => /^\d\d:\d\d$/.test(x.time)); s.times = [...new Set(s.slots.map(x => x.time))].sort(); saveSet(); };
+  const sl = slots();
+  // S.set is read here and not when the editor is drawn: a settings snapshot swaps in a new object between two edits.
+  const keep = () => { const s = S.set; s.slots = sl.filter(x => /^\d\d:\d\d$/.test(x.time)); s.times = [...new Set(s.slots.map(x => x.time))].sort(); saveSet(); };
   return h('div', {class:'field'}, h('div', {class:'lab'}, 'Post times each day'), h('p', {class:'hint'}, 'Each post time can belong to one podcast. Clips from that podcast fill that time. Leave the podcast empty to accept any clip.'),
     sl.map((x, i) => h('div', {class:'row', style:'flex-wrap:nowrap;gap:8px'},
       h('input', {type:'time', id:'f-sl-t' + i, 'aria-label':'Post time ' + (i + 1), value:x.time, style:'flex:0 0 138px;width:auto;padding-inline:10px', onchange:e => { x.time = e.target.value; keep(); }}),
       h('input', {type:'text', id:'f-sl-s' + i, 'aria-label':'Podcast for post time ' + (i + 1), placeholder:'Any podcast', value:x.show, style:'flex:1 1 0;min-width:0;width:auto', onchange:e => { x.show = e.target.value.trim(); keep(); }}),
-      h('button', {class:'btn sm warn', type:'button', 'aria-label':'Remove post time ' + x.time, style:'flex:none;padding:0 13px', onclick:() => { sl.splice(i, 1); keep(); render(); }}, '\u2715'))),
-    h('div', {class:'row'}, h('button', {class:'btn sm', type:'button', disabled:sl.length >= 8, onclick:() => { let hh = 9; while (sl.some(x => x.time === String(hh).padStart(2, '0') + ':00') && hh < 23) hh++; sl.push({time:String(hh).padStart(2, '0') + ':00', show:''}); keep(); render(); }}, 'Add a post time'), h('span', {class:'hint'}, sl.length + (sl.length === 1 ? ' post a day' : ' posts a day'))));
+      h('button', {class:'btn sm warn', type:'button', id:'f-sl-x' + i, 'aria-label':'Remove post time ' + x.time, style:'flex:none;padding:0 13px;min-width:42px;min-height:42px', onclick:() => { sl.splice(i, 1); keep(); render(); }}, '\u2715'))),
+    h('div', {class:'row'}, h('button', {class:'btn sm', type:'button', id:'f-sl-add', style:'min-height:42px', disabled:sl.length >= 8, onclick:() => { let hh = 9; while (sl.some(x => x.time === String(hh).padStart(2, '0') + ':00') && hh < 23) hh++; sl.push({time:String(hh).padStart(2, '0') + ':00', show:''}); keep(); render(); }}, 'Add a post time'), h('span', {class:'hint'}, sl.length + (sl.length === 1 ? ' post a day' : ' posts a day'))));
 }
 function coverage(){
   const all = allClips(), today = todayKey();
@@ -395,6 +494,7 @@ function coverage(){
 }
 function fillSlots(j){
   const taken = new Set(allClips().map(x => wall(x.c.publishAt))), times = slotTimes(j.show).sort();
+  if (!times.length) return;   // with no post times the search below would never end
   let day = new Date(todayKey() + 'T12:00:00Z'); const next = () => { for (;;){ day = new Date(day.getTime() + 864e5); const key = day.toISOString().slice(0, 10); for (const t of times){ const w = key + 'T' + t; if (!taken.has(w)){ taken.add(w); day = new Date(day.getTime() - 864e5); return w; } } } };
   for (const c of (j.clips || []).slice().sort((a, b) => a.n - b.n)) if (!c.publishAt) c.publishAt = wallToISO(next());
 }
@@ -447,26 +547,127 @@ function vSchedule(){
   return [h('div', {class:'sect'}, h('h2', null, 'Schedule'), h('p', {class:'muted'}, 'Every clip with a publish time, in ' + S.set.tz.replace(/_/g, ' ') + ' time. Open rows are post times with no clip yet.'),
     past ? h('button', {class:'btn sm', type:'button', style:'align-self:flex-start', onclick:() => { S.showPast = !S.showPast; render(); }}, S.showPast ? 'Hide past days' : 'Show ' + past + ' past clips') : null), coverage(), days];
 }
+/* ---------- the settings fields, shared by Setup and the walkthrough ---------- */
+const setv = (k, v) => { S.set[k] = v; saveSet(); };
+const txt = (k, label, hint, area) => field(label, hint, h(area ? 'textarea' : 'input', {type:area ? null : 'text', id:'f-s-' + k, value:S.set[k] || '', onchange:e => setv(k, e.target.value)}), 'f-s-' + k);
+const pick = (k, opts, off) => chips(opts, S.set[k], false, (o, on) => setv(k, on ? o : off), 'f-s-' + k);
+const tzOK = v => { try { new Intl.DateTimeFormat('en-US', {timeZone:v}); return !!v; } catch (e) { return false; } };
+function tzField(){
+  const msg = h('p', {class:'hint', role:'status'});
+  return field('Time zone', 'A zone name such as America/Chicago.', h('div', {class:'field'}, h('input', {type:'text', id:'f-s-tz', value:S.set.tz, onchange:e => { const v = e.target.value.trim();
+    if (!tzOK(v)){ e.target.value = S.set.tz; msg.textContent = '"' + v + '" is not a time zone name. The time zone is still ' + S.set.tz + '.'; return; }
+    msg.textContent = ''; e.target.value = v; setv('tz', v); }}), msg), 'f-s-tz');
+}
+// The six overlays as small pictures. The numbers are pixels on the real 1080 x 1920 frame, from studio/overlays.py and studio/render.py.
+const YEL = '#FFE300', BLK = '#0A090C';
+const P = (x0, y0, x1, y1, css, cls) => h('i', {class:cls, style:'left:' + x0 / 10.8 + '%;top:' + y0 / 19.2 + '%;width:' + (x1 - x0) / 10.8 + '%;height:' + (y1 - y0) / 19.2 + '%;' + (css || '')});
+// One line of text with its middle at height cy. x is its left edge. Without x it is centred across the frame.
+const T = (cy, px, kid, css, x) => h('i', {class:'tx', style:'top:' + cy / 19.2 + '%;font-size:' + px / 10.8 + 'cqw;' + (x == null ? 'left:6%;right:6%;text-align:center;' : 'left:' + x / 10.8 + '%;') + (css || '')}, kid);
+const said = () => ['SAY IT ', h('b', {style:'color:' + YEL}, 'LOUD')];
+const CAP = (cy, px, css) => T(cy, px, said(), css == null ? 'text-shadow:0 0 .5cqw #000,0 .4cqw 1cqw #000' : css);
+function ovArt(name){
+  const br = String(S.set.brand || 'your brand'), grey = 'color:#ececec;font-weight:600', title = 'YOUR TITLE HERE';
+  const bar = y => P(480, y, 600, y + 8, 'background:' + YEL + ';border-radius:9px'), foot = () => P(0, 1690, 1080, 1920, 'background:linear-gradient(transparent,#000 74%)');
+  const tag = css => h('b', {style:'display:inline-block;' + css}, br);
+  return ({
+    'Banner': () => [P(0, 0, 1080, 560, 'background:' + BLK), T(398, 58, title), bar(446), T(506, 36, br, grey), foot(), CAP(1150, 92)],
+    'Glass card': () => [P(0, 0, 1080, 640, 'background:linear-gradient(rgba(0,0,0,.43),transparent)'), P(65, 280, 1015, 556, 'background:rgba(20,16,44,.59);border:1px solid rgba(255,255,255,.4);border-radius:3.7cqw'), T(420, 50, title), T(500, 32, br, grey), CAP(1140, 88)],
+    'Lower third': () => [P(0, 820, 1080, 1920, 'background:linear-gradient(transparent,rgba(0,0,0,.59) 44%)'), T(316, 32, tag('background:rgba(14,12,28,.67);border:1px solid rgba(255,255,255,.35);border-radius:99px;padding:.5em .8em'), grey),
+      P(65, 1142, 77, 1238, 'background:' + YEL + ';border-radius:9px'), T(1165, 46, 'YOUR TITLE', null, 100), T(1216, 46, 'SITS DOWN HERE', null, 100), CAP(980, 83)],
+    'Wide frame': () => [P(0, 0, 1080, 1920, 'background:' + BLK), P(40, 500, 1040, 1062, 'border:1px solid rgba(255,255,255,.24);border-radius:2.8cqw', 'vid w'), T(302, 32, br, grey), T(440, 54, title), CAP(1172, 88, '')],
+    'Poster': () => [P(0, 0, 1080, 760, 'background:linear-gradient(rgba(0,0,0,.8),transparent)'), P(0, 940, 1080, 1920, 'background:linear-gradient(transparent,rgba(0,0,0,.35) 39%)'), T(350, 96, 'LOUD TITLE', null, 70), T(458, 96, 'THEN IT FADES', 'color:' + YEL, 70),
+      T(1032, 30, tag('background:' + YEL + ';color:#0c0c0c;border-radius:.4em;padding:.42em .73em')), T(1163, 75, h('b', {style:'display:inline-block;background:rgba(12,12,16,.9);border-radius:.2em;padding:.1em .4em'}, said()))],
+    'First banner': () => [P(0, 0, 1080, 400, 'background:' + BLK), T(208, 58, title), bar(258), T(350, 37, br, grey), foot(), CAP(1320, 96)]
+  }[name])();
+}
+const OVS = [['Banner', 'A black banner on top holds the title and your brand.'], ['Glass card', 'A see-through card floats over the video with the title and brand.'], ['Lower third', 'The top stays clear. The title sits low on the left.'],
+  ['Wide frame', 'The whole camera shot sits in a rounded frame, with the title above it.'], ['Poster', 'A loud title opens the clip and fades after 2 seconds.'], ['First banner', 'A shorter banner on top, with the captions lower down.']];
+function ovField(){
+  const cur = OVS.some(o => o[0] === S.set.overlay) ? S.set.overlay : DEF.overlay, g = h('div', {class:'ovs', role:'group', 'aria-label':'Overlay'});
+  OVS.forEach(([name, line], i) => g.append(h('button', {class:'ovt', type:'button', id:'f-s-ov' + i, 'aria-pressed':String(cur === name), onclick:e => { for (const x of g.children) x.setAttribute('aria-pressed', 'false'); e.currentTarget.setAttribute('aria-pressed', 'true'); setv('overlay', name); }},
+    h('span', {class:'ovp', 'aria-hidden':'true'}, ovArt(name)), h('b', null, name), h('span', {class:'ovd'}, line))));
+  return field('Overlay', 'Tap a look. The first five keep every word inside the safe zone. "First banner" is the older look and does not. The Poster title shows for 2 seconds and fades. The yellow brand tag never moves, and the captions sit under the tag.', g);
+}
+const SVCS = ['YouTube','TikTok','Instagram'], DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const F = {
+  post: () => [field('Post to', null, chips(SVCS, S.set.services, true, (o, on) => { const x = new Set(S.set.services); on ? x.add(o) : x.delete(o); setv('services', [...x]); render(); }, 'f-s-services')),
+    SVCS.filter(o => (S.set.services || []).includes(o)).map(o => { const k = o.toLowerCase(), id = 'f-s-ch-' + k;
+      return field(o + ' channel name in Buffer', 'Type the name the way Buffer shows it.', h('input', {type:'text', id, maxlength:80, value:(S.set.channels || {})[k] || '', onchange:e => setv('channels', Object.assign({}, S.set.channels, {[k]:e.target.value.trim()}))}), id); }),
+    field('Buffer login', 'The name of the saved Buffer login this account posts with, such as main. It is only a name. Never put a key or a password here. Letters, numbers, - and _ only.',
+      h('input', {type:'text', id:'f-s-buffer', maxlength:24, autocapitalize:'none', autocomplete:'off', spellcheck:'false', value:S.set.buffer || '', onchange:e => { const v = e.target.value.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); e.target.value = v; setv('buffer', v); }}), 'f-s-buffer')],
+  overlay: ovField,
+  motion: () => [field('Zoom', 'The picture takes a new zoom every few words, so the clip never looks still.', pick('zoom', ['Smooth','Slow creep','None'], 'None')),
+    field('Captions', 'The words show on screen as they are spoken.', pick('captions', ['Yes','No'], 'Yes')),
+    field('Strong language', '"Mute it" makes each swear word silent in the clip.', pick('language', ['Mute it','Leave it in'], 'Mute it'))],
+  brand: () => [txt('brand', 'Brand text on each clip', 'It sits beside your mark in the banner, such as your site name. Leave it empty for none.'),
+    txt('descTail', 'Line added to every description', 'For example a link to your app.', true),
+    txt('comment', 'First comment on each post', 'Buffer adds this comment under each Instagram reel. On YouTube you add and pin it yourself.', true),
+    field('End card days', S.acct && S.acct.legacy ? 'Clips that post on these days end with the 2-second Noxi end card.' : 'Clips that post on these days end with a 2-second end card. A new account needs its own end card video first.',
+      chips(DAYS, S.set.flashDays, true, (o, on) => { const x = new Set(S.set.flashDays || []); on ? x.add(o) : x.delete(o); setv('flashDays', DAYS.filter(d => x.has(d))); }, 'f-s-flashDays'))],
+  times: () => [slotEditor(), tzField()],
+  clips: () => [field('How many clips?', null, pick('count', COUNTS, DEF.count)), field('How long is each clip?', null, pick('len', LENS, DEF.len)),
+    field('Long stories', 'A story that needs more time becomes Part 1, Part 2 and so on.', pick('parts', ['Split long stories into parts','Short clips only'], 'Short clips only')),
+    field('What makes a moment worth clipping?', null, chips(KINDS, S.set.kinds, true, (o, on) => { const x = new Set(S.set.kinds); on ? x.add(o) : x.delete(o); setv('kinds', [...x]); }, 'f-s-kinds'))]
+};
+// What this account posts through: its Buffer login and the channel named for each platform.
+function linked(){
+  const s = S.set, ch = (s.services || []).map(o => o + ': ' + ((s.channels || {})[o.toLowerCase()] || 'no channel named yet'));
+  return 'Buffer login: ' + (s.buffer || 'the default one') + '. ' + (ch.length ? ch.join('. ') + '.' : 'No platform chosen yet.');
+}
+function acctCard(){
+  const num = h('span', {class:'mono', id:'acct-key', style:'font-weight:600;font-size:18px;-webkit-user-select:all;user-select:all'}, S.key); let sure = false;
+  return h('div', {class:'card'}, h('div', {class:'label'}, 'Account'),
+    field('Account name', null, h('input', {type:'text', id:'f-acct-name', maxlength:60, value:S.acct.name || '', onchange:e => { const v = e.target.value.trim(); if (v) saveAcct({name:v}); else e.target.value = S.acct.name || ''; }}), 'f-acct-name'),
+    field('Account number', 'This number is the only way into this studio. There is no password. Keep it somewhere safe.', h('div', {class:'row'}, h('span', {class:'grow'}, num), copyBtn(S.key, num, 'f-acct-copy'))),
+    field('Linked through', 'Change these under Posting below.', h('p', {id:'acct-links', style:'overflow-wrap:anywhere'}, linked())),
+    h('button', {class:'btn wide', type:'button', id:'f-acct-wiz', onclick:() => { S.wiz = 1; go('setup'); }}, S.acct.setupDone ? 'Run the walkthrough again' : 'Finish the walkthrough'),
+    h('button', {class:'btn wide warn', type:'button', id:'f-acct-out', onclick:e => { if (sure) signOut('', true); else { sure = true; e.currentTarget.textContent = 'Sign out? You need the account number to get back in.'; } }}, 'Sign out'));
+}
 function vSetup(){
-  const s = S.set, set = (k, v) => { s[k] = v; saveSet(); };
-  const txt = (k, label, hint, area) => field(label, hint, h(area ? 'textarea' : 'input', {type:area ? null : 'text', id:'f-s-' + k, value:Array.isArray(s[k]) ? s[k].join(', ') : s[k] || '', onchange:e => { set(k, k === 'times' ? e.target.value.split(',').map(x => x.trim()).filter(x => /^\d\d:\d\d$/.test(x)) : e.target.value); if (k === 'times') e.target.value = s.times.join(', '); }}), 'f-s-' + k);
+  const card = (label, kids) => h('div', {class:'card'}, h('div', {class:'label'}, label), kids);
   return [h('div', {class:'sect'}, h('h2', null, 'Setup'), h('p', {class:'muted'}, 'Your usual answers. Every new job starts from these.')),
-    h('div', {class:'card'}, h('div', {class:'label'}, 'Posting'), slotEditor(),
-      txt('tz', 'Time zone', 'A zone name such as America/Chicago.'), field('Post to', null, chips(['YouTube','TikTok','Instagram'], s.services, true, (o, on) => { const x = new Set(s.services); on ? x.add(o) : x.delete(o); set('services', [...x]); })),
-      txt('descTail', 'Line added to every description', 'For example a link to your app.', true),
-      txt('comment', 'First comment on each post', 'Buffer adds this comment under each Instagram reel. On YouTube you add and pin it yourself.', true),
-      field('Noxi flash days', 'Clips that post on these days end with a 2-second Noxi card.', chips(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'], s.flashDays, true, (o, on) => { const x = new Set(s.flashDays || []); on ? x.add(o) : x.delete(o); set('flashDays', ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].filter(d => x.has(d))); }))),
-    h('div', {class:'card'}, h('div', {class:'label'}, 'Look of each clip'),
-      field('Overlay', 'The first five keep every word inside the safe zone. Poster shows its title for 1.5 seconds, then moves the Noxi tag under the captions. "First banner" is the look of your earlier clips.', chips(['Banner','Glass card','Lower third','Wide frame','Poster','First banner'], s.overlay, false, (o, on) => set('overlay', on ? o : DEF.overlay))),
-      field('Zoom', null, chips(['Smooth','Slow creep','None'], s.zoom, false, (o, on) => set('zoom', on ? o : 'None'))),
-      field('Captions', null, chips(['Yes','No'], s.captions, false, (o, on) => set('captions', on ? o : 'Yes'))),
-      field('Strong language', null, chips(['Mute it','Leave it in'], s.language, false, (o, on) => set('language', on ? o : 'Mute it'))),
-      txt('brand', 'Brand text on each clip', 'It sits beside your mark in the banner, such as appnoxi.com. Leave it empty for none.')),
-    h('div', {class:'card'}, h('div', {class:'label'}, 'New clipping jobs start with'),
-      field('How many clips?', null, chips(COUNTS, s.count, false, (o, on) => set('count', on ? o : DEF.count))),
-      field('How long is each clip?', null, chips(LENS, s.len, false, (o, on) => set('len', on ? o : DEF.len))),
-      field('Long stories', 'A story that needs more time becomes Part 1, Part 2 and so on.', chips(['Split long stories into parts','Short clips only'], s.parts, false, (o, on) => set('parts', on ? o : 'Short clips only'))),
-      field('What makes a moment worth clipping?', null, chips(KINDS, s.kinds, true, (o, on) => { const x = new Set(s.kinds); on ? x.add(o) : x.delete(o); set('kinds', [...x]); })))];
+    acctCard(), card('Posting', [F.times(), F.post()]), card('Look of each clip', [F.overlay(), F.motion()]), card('Brand', F.brand()), card('New clipping jobs start with', F.clips())];
+}
+// The walkthrough: the same fields as Setup, one group per screen. Every choice saves at once, so "Finish later" loses nothing.
+const STEPS = [['Channels', 'Choose where your clips post. Then name each channel the way Buffer shows it.', F.post], ['Reel style', 'Pick the look of your reels.', F.overlay],
+  ['Motion and captions', 'How the picture moves and what shows on screen.', F.motion], ['Brand', 'What every clip carries with it.', F.brand],
+  ['Post times', 'When your clips post each day.', F.times], ['Clip defaults', 'Every new clipping job starts with these.', F.clips]];
+function vWiz(){
+  const n = S.wiz, st = STEPS[n - 1], last = n === STEPS.length, step = d => { S.wiz = n + d; render(); scrollTo(0, 0); }, end = done => { S.wiz = 0; if (done) saveAcct({setupDone:true}); go('jobs'); };
+  return [h('div', {class:'sect'}, h('div', {class:'label'}, 'Step ' + n + ' of ' + STEPS.length), h('div', {class:'prog', 'aria-hidden':'true'}, h('i', {style:'width:' + n / STEPS.length * 100 + '%'})), h('h2', null, st[0]), h('p', {class:'muted'}, st[1])),
+    h('div', {class:'card'}, st[2]()),
+    h('div', {class:'row'}, n > 1 ? h('button', {class:'btn grow', type:'button', id:'f-wiz-back', onclick:() => step(-1)}, 'Back') : null, h('button', {class:'btn pri grow', type:'button', id:'f-wiz-next', onclick:() => last ? end(true) : step(1)}, last ? 'Finish' : 'Next')),
+    h('button', {class:'btn wide', type:'button', id:'f-wiz-later', onclick:() => end(false)}, 'Finish later')];
+}
+// Sign in, create an account, and show a new account number. Nothing here uses location.hash.
+function vGate(){
+  const G = S.gate, REM = 'Remember on this device', msg = G.msg ? h('p', {class:'note', role:'status', id:'f-gate-msg'}, G.msg) : null, desc = msg ? 'f-gate-msg' : null;
+  const to = mode => { G.mode = mode; G.msg = ''; render(); scrollTo(0, 0); };
+  // A message about a field: focus goes back into the field, and its aria-describedby reads the message with it.
+  const fail = (id, m) => { G.msg = m; render(); refocus(id); };
+  // One create or sign-in at a time. A redraw makes a new button, so the guard is on the gate and not on the button.
+  const make = async (b, name, legacy) => { if (G.wait) return; G.wait = true; b.disabled = true; let r; try { r = await makeAcct(name, legacy, G.remember); } finally { G.wait = false; } if (r) G.msg = r; render(); scrollTo(0, 0); };
+  if (G.mode === 'show'){ const num = h('p', {class:'keybig', id:'acct-key'}, G.key);
+    return [h('div', {class:'sect'}, h('h2', null, 'Save your account number'), h('p', {class:'muted'}, 'This number is the only way back into your studio. There is no password. Save it somewhere safe now.')),
+      h('div', {class:'card'}, num, copyBtn(G.key, num, 'f-key-copy')),
+      h('button', {class:'btn pri wide', type:'button', id:'f-key-saved', onclick:() => { S.gate = null; S.wiz = S.acct.setupDone ? 0 : 1; go('jobs'); }}, 'I saved it, continue')]; }
+  if (G.mode === 'new') return [h('div', {class:'sect'}, h('h2', null, 'Create a new account'), h('p', {class:'muted'}, 'Give the account a name, such as the channel it runs. You get an account number to sign in with. There is no password.')),
+    h('div', {class:'card'}, field('Account name', null, h('input', {type:'text', id:'f-new-name', maxlength:60, 'aria-describedby':desc, value:G.name || '', oninput:e => { G.name = e.target.value; }}), 'f-new-name'), msg,
+      h('button', {class:'btn pri wide', type:'button', id:'f-new-make', onclick:e => { const name = (G.name || '').trim(); if (!name) return fail('f-new-name', 'Give the account a name first.'); make(e.currentTarget, name, false); }}, 'Create my account'),
+      h('button', {class:'btn wide', type:'button', id:'f-new-back', onclick:() => to('in')}, 'Back to sign in'))];
+  const n = oldJobs();
+  const open = async b => { if (G.wait) return; const k = normKey(G.key); if (!k) return fail('f-key', 'That is not an account number. An account number looks like S4F-ABCD-EFGH.');
+    G.wait = true; b.disabled = true; const r = await openAcct(k); G.wait = false;
+    if (r) return fail('f-key', r !== 'none' ? r : db ? 'No account has that number. Check it and try again.' : NOLOCAL);
+    localSet('s4f.key', G.remember ? k : ''); S.gate = null; route(); scrollTo(0, 0); };   // route() opens the link the page was opened with, if it is this account's
+  const btn = h('button', {class:'btn pri wide', type:'button', id:'f-key-open', onclick:() => open(btn)}, 'Open my studio');
+  return [h('div', {class:'sect'}, h('h2', null, 'Sign in'), h('p', {class:'muted'}, 'Enter your account number to open your studio. There is no password.')),
+    offerOld() ? h('div', {class:'card'}, h('div', {class:'label'}, 'Your existing studio'),
+      h('p', null, (n ? n + (n === 1 ? ' job is' : ' jobs are') + ' waiting in your existing studio.' : 'Your existing studio has saved settings.') + ' Move it into an account to open it. Nothing in it changes.'),
+      h('button', {class:'btn pri wide', type:'button', id:'f-old-move', onclick:e => make(e.currentTarget, 'My studio', true)}, 'Move my existing studio into an account')) : null,
+    h('div', {class:'card'}, field('Account number', null, h('input', {type:'text', id:'f-key', placeholder:'S4F-ABCD-EFGH', autocapitalize:'characters', autocomplete:'off', spellcheck:'false', 'aria-describedby':desc, value:G.key || '', oninput:e => { G.key = e.target.value; }, onkeydown:e => { if (e.key === 'Enter') open(btn); }}), 'f-key'), msg, btn,
+      chips([REM], G.remember ? [REM] : [], true, (o, on) => { G.remember = on; }, 'f-key-remember')),
+    h('button', {class:'btn wide', type:'button', id:'f-new', onclick:() => to('new')}, 'Create a new account')];
 }
 
 /* ---------- start ---------- */
@@ -474,15 +675,32 @@ back.onclick = () => go('jobs');
 document.querySelectorAll('.tabs button').forEach(b => { b.onclick = () => go(b.dataset.v); });
 function route(){ const m = /^#job-(.+)$/.exec(location.hash), v = location.hash.slice(1); if (m && S.jobs.has(m[1])){ S.view = 'job'; S.id = m[1]; } else if (['jobs','queue','schedule','setup'].includes(v) && S.view !== 'new'){ S.view = v; S.id = null; } render(); }
 addEventListener('hashchange', route);
-function useLocal(){ S.store = 'local'; S.jobs = new Map(Object.entries(localGet('s4f.jobs', {}))); S.set = Object.assign({}, DEF, localGet('s4f.set', {})); route(); }
+// Is there a studio from before accounts that no account holds yet? The sign-in screen offers to move it.
+function checkOld(n){
+  (db ? Promise.all([db.doc('meta/legacy').get(), db.doc('settings/main').get()]).then(([m, s]) => ({claimed:m.exists, main:s.exists}))
+    : Promise.resolve({claimed:!!localGet('s4f.legacyClaimed', false), main:localGet('s4f.set', null) !== null})).then(o => { S.old = o; const G = S.gate;
+      // Draw only when the card has to appear. It is drawn even while the owner is in the number field, and focus goes back there.
+      if (!G || G.mode !== 'in' || G.wait || S.busy || S.store === 'wait' || !offerOld()) return;
+      const id = (document.activeElement || {}).id; render(); if (id) refocus(id); },
+    // One failed read must not hide the existing studio for the whole visit. Ask again, a little later each time.
+    e => { if (again(e)) setTimeout(checkOld, Math.min(30000, 3000 * (n || 1)), (n || 1) + 1); });
+}
+// Runs once, when the store is known. A number remembered on this device opens its account without asking.
+async function boot(){
+  checkOld(); const k = normKey(localGet('s4f.key', ''));
+  if (k){ const r = await openAcct(k, 3); if (r) Object.assign(S.gate, {key:k, msg:r !== 'none' ? r : db ? 'The account remembered on this device no longer exists. Enter another number or create a new account.' : NOLOCAL}); else S.gate = null; }
+  S.busy = false; if (S.store !== 'wait') route();
+}
+function useLocal(){ db = null; S.store = 'local'; ALL = new Map(Object.entries(localGet('s4f.jobs', {}))); boot(); }
 const cl = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
 if (cl){
-  cl.use('db').then(d => { if (!d) return useLocal(); col = d.collection('jobs'); setDoc = d.doc('settings/main');
+  cl.use('db').then(d => { if (!d) return useLocal(); db = d; col = d.collection('jobs');
     const t = setTimeout(() => { if (S.store === 'wait'){ S.store = 'db'; S.note = 'Your saved jobs cannot be reached yet. The page keeps trying.'; render(); } }, 10000);
-    setDoc.onSnapshot(x => { if (x.exists) S.set = Object.assign({}, DEF, x.data()); if (S.view === 'setup' && document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return; if (S.store !== 'wait') render(); }, () => {});
-    col.onSnapshot(snap => { clearTimeout(t); S.note = ''; const first = S.store === 'wait'; S.store = 'db'; const m = new Map(); for (const x of snap.docs){ const old = S.jobs.get(x.id); m.set(x.id, Object.assign({}, x.data(), old && old.sentNote ? {sentNote:old.sentNote} : {})); } S.jobs = m;
-      if (first) return route(); if (S.view === 'new') return; if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return; render(); },
+    // One watch on all jobs for the life of the page. Signing in or out only changes which of them S.jobs holds.
+    col.onSnapshot(snap => { clearTimeout(t); S.note = ''; const first = S.store === 'wait'; S.store = 'db'; const m = new Map(); for (const x of snap.docs){ const old = ALL.get(x.id); m.set(x.id, Object.assign({}, x.data(), old && old.sentNote ? {sentNote:old.sentNote} : {})); } ALL = m; scope();
+      if (first) return route(); soft(); },
       () => { clearTimeout(t); S.store = 'db'; S.note = 'Your saved jobs could not be loaded. Close and reopen this page.'; render(); });
+    boot();
   }).catch(useLocal);
   cl.use('comments').then(x => { comments = x || null; }).catch(() => {});
   cl.use('downloads').then(x => { downloads = x || null; }).catch(() => {});
