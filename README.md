@@ -1,7 +1,7 @@
 <h1 align="center">studio4free</h1>
 
 <p align="center"><b>AI apps built by Philip Werner ("Cohesive")</b><br>
-U.S. Air Force veteran · AI-assisted developer · Tampa, FL</p>
+Disabled U.S. Air Force veteran · AI-assisted developer · Tampa, FL</p>
 
 ---
 
@@ -9,7 +9,7 @@ U.S. Air Force veteran · AI-assisted developer · Tampa, FL</p>
 
 I build AI-powered apps with Claude Code and modern AI APIs.
 I plan the product, write the specs, direct AI coding agents, and test every release.
-Before software, I served in the U.S. Air Force in aircraft maintenance.
+Before software, I served in the U.S. Air Force in aircraft maintenance. I am a disabled veteran.
 
 ## Projects
 
