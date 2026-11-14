@@ -1,0 +1,76 @@
+{
+ "brand": "noxi",
+ "shape": "9:16",
+ "mode": "dark",
+ "pace": "Normal",
+ "sound": "Sound effects only",
+ "cta": "appnoxi.com/go",
+ "postAt": "2026-11-17T17:00:00-06:00",
+ "title": "Example mascot story",
+ "style": "Mascot story",
+ "look": "Mosaic",
+ "length": 15,
+ "cast": [
+  "Luna",
+  "Echo",
+  "Hoot",
+  "Nova"
+ ],
+ "endCard": "mascot end card",
+ "frames": [
+  {
+   "n": 1,
+   "start": 0,
+   "end": 3,
+   "picture": "Luna looks at an empty camera roll",
+   "mascots": [
+    "Luna"
+   ],
+   "words": "Luna wants the photos from last night.",
+   "sound": "pop"
+  },
+  {
+   "n": 2,
+   "start": 3,
+   "end": 6,
+   "picture": "Echo shrugs",
+   "mascots": [
+    "Echo"
+   ],
+   "words": "Echo took none.",
+   "sound": "pop"
+  },
+  {
+   "n": 3,
+   "start": 6,
+   "end": 9.5,
+   "picture": "Hoot holds up a phone with a Noxi alert",
+   "mascots": [
+    "Hoot"
+   ],
+   "words": "Hoot got the alert.",
+   "sound": "pop"
+  },
+  {
+   "n": 4,
+   "start": 9.5,
+   "end": 12.5,
+   "picture": "All four laugh at the recap",
+   "mascots": [
+    "Luna",
+    "Echo"
+   ],
+   "words": "Now the crew has the whole night.",
+   "sound": "pop"
+  },
+  {
+   "n": 5,
+   "start": 12.5,
+   "end": 15,
+   "picture": "Mascot end card",
+   "words": "",
+   "endCard": true,
+   "sound": "whoosh"
+  }
+ ]
+}

@@ -1,0 +1,291 @@
+{
+ "brand": "noxi",
+ "title": "Build 22 announcement",
+ "source": "PhilMarketingteam marketing-videos/src/noxi/Build22.tsx (scene times from its scene list, at 30 fps)",
+ "style": "Hype type",
+ "postAt": "2026-11-14T12:00:00-06:00",
+ "length": 60,
+ "shape": "9:16",
+ "look": "Graphite",
+ "pace": "Hyped",
+ "sound": "Beat",
+ "cast": [],
+ "endCard": "Column N icon, NOXI, appnoxi.com (built into the video)",
+ "cta": "appnoxi.com",
+ "frames": [
+  {
+   "n": 1,
+   "start": 0,
+   "end": 4.5,
+   "picture": "Phone with the old build 20 app in the Classic look: old Home, old calendar, old board",
+   "words": "Your nights just got a glow-up",
+   "sound": "beat starts",
+   "kit": [
+    "Classic"
+   ],
+   "box": [
+    60,
+    90,
+    960,
+    212
+   ]
+  },
+  {
+   "n": 2,
+   "start": 4.5,
+   "end": 6.37,
+   "picture": "The old phone screen cracks and shatters like glass; the Graphite Dark Home is underneath",
+   "words": "",
+   "sound": "glass crack, hit",
+   "kit": [
+    "Classic"
+   ]
+  },
+  {
+   "n": 3,
+   "start": 6.37,
+   "end": 7.5,
+   "picture": "Graphite Dark Home in a glowing phone frame",
+   "words": "Build 22",
+   "sound": "",
+   "box": [
+    348,
+    110,
+    384,
+    110
+   ]
+  },
+  {
+   "n": 4,
+   "start": 7.5,
+   "end": 11.5,
+   "picture": "Home repainted by the LED line in each look: Graphite, Mosaic, Smoke, Bone",
+   "words": "Four new looks",
+   "sound": "",
+   "box": [
+    204,
+    110,
+    672,
+    110
+   ]
+  },
+  {
+   "n": 5,
+   "start": 7.5,
+   "end": 8.5,
+   "picture": "Chip under the phone",
+   "words": "Graphite",
+   "sound": "",
+   "box": [
+    300,
+    1700,
+    480,
+    90
+   ]
+  },
+  {
+   "n": 6,
+   "start": 8.5,
+   "end": 9.5,
+   "picture": "Chip under the phone",
+   "words": "Mosaic",
+   "sound": "",
+   "box": [
+    300,
+    1700,
+    480,
+    90
+   ]
+  },
+  {
+   "n": 7,
+   "start": 9.5,
+   "end": 10.5,
+   "picture": "Chip under the phone",
+   "words": "Smoke",
+   "sound": "",
+   "box": [
+    300,
+    1700,
+    480,
+    90
+   ]
+  },
+  {
+   "n": 8,
+   "start": 10.5,
+   "end": 11.5,
+   "picture": "Chip under the phone",
+   "words": "Bone",
+   "sound": "",
+   "box": [
+    300,
+    1700,
+    480,
+    90
+   ]
+  },
+  {
+   "n": 9,
+   "start": 11.5,
+   "end": 14.5,
+   "picture": "Home flips between dark and light",
+   "words": "Light or dark",
+   "sound": "",
+   "box": [
+    228,
+    110,
+    624,
+    110
+   ]
+  },
+  {
+   "n": 10,
+   "start": 14.83,
+   "end": 18.5,
+   "picture": "The Column N icon drops in and cycles through the four looks",
+   "words": "A new N",
+   "sound": "",
+   "kit": [
+    "Column N app icon"
+   ],
+   "box": [
+    348,
+    260,
+    385,
+    126
+   ]
+  },
+  {
+   "n": 11,
+   "start": 18.5,
+   "end": 22.5,
+   "picture": "The look picker screen",
+   "words": "Pick your look",
+   "sound": "",
+   "box": [
+    204,
+    110,
+    672,
+    110
+   ]
+  },
+  {
+   "n": 12,
+   "start": 22.5,
+   "end": 26.5,
+   "picture": "Close-up of the glass cards and the LED running light",
+   "words": "Liquid glass. LED light.",
+   "sound": "",
+   "box": [
+    60,
+    110,
+    960,
+    193
+   ]
+  },
+  {
+   "n": 13,
+   "start": 26.5,
+   "end": 31.5,
+   "picture": "The friends screen, made-up names",
+   "words": "Find your friends\nby their exact username",
+   "sound": "",
+   "box": [
+    60,
+    90,
+    960,
+    317
+   ]
+  },
+  {
+   "n": 14,
+   "start": 31.5,
+   "end": 36.5,
+   "picture": "The Everyone board, made-up names",
+   "words": "Climb the Everyone board\nOpt in. Only your @username and XP show.",
+   "sound": "",
+   "box": [
+    60,
+    90,
+    960,
+    290
+   ]
+  },
+  {
+   "n": 15,
+   "start": 36.5,
+   "end": 42.5,
+   "picture": "The state feed, placeholder photos",
+   "words": "Your state, last night\nOne photo from every crew that went out",
+   "sound": "",
+   "box": [
+    60,
+    90,
+    960,
+    304
+   ]
+  },
+  {
+   "n": 16,
+   "start": 36.9,
+   "end": 42.5,
+   "picture": "Chip under the phone",
+   "words": "COMING SOON",
+   "sound": "",
+   "box": [
+    300,
+    1700,
+    480,
+    90
+   ]
+  },
+  {
+   "n": 17,
+   "start": 42.5,
+   "end": 48,
+   "picture": "Montage of the looks",
+   "words": "Your crew. Your look.",
+   "sound": "",
+   "box": [
+    78,
+    110,
+    924,
+    101
+   ]
+  },
+  {
+   "n": 18,
+   "start": 48,
+   "end": 54,
+   "picture": "Graphite Home in the phone",
+   "words": "Get Noxi\nappnoxi.com",
+   "sound": "",
+   "box": [
+    210,
+    120,
+    660,
+    276
+   ]
+  },
+  {
+   "n": 19,
+   "start": 54,
+   "end": 60,
+   "picture": "End card: Mosaic Column N icon, NOXI text logo, link",
+   "words": "NOXI\nappnoxi.com",
+   "sound": "music fades out over the last 2 s",
+   "kit": [
+    "Column N app icon",
+    "NOXI text logo"
+   ],
+   "box": [
+    238,
+    1000,
+    605,
+    253
+   ]
+  }
+ ],
+ "boxNote": "box = the words' size estimated at 0.5 em per character, centred; chips measured from Build22.tsx"
+}

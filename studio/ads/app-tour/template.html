@@ -1,0 +1,65 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>App tour</title>
+<style>
+  .glow{position:absolute;inset:0;background:
+    radial-gradient(55% 32% at 50% 58%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%),
+    radial-gradient(70% 30% at 50% 100%, color-mix(in srgb, #FF3D8B 16%, transparent), transparent 70%)}
+  .phone{position:absolute;left:50%;border-radius:64px;padding:14px;background:linear-gradient(160deg,var(--line),color-mix(in srgb,var(--ground) 70%,var(--line)));
+    box-shadow:0 0 0 2px color-mix(in srgb, var(--text) 18%, transparent), 0 0 110px color-mix(in srgb, var(--accent) 45%, transparent)}
+  .screen{position:relative;width:100%;height:100%;border-radius:50px;overflow:hidden;background:var(--ground)}
+  .screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .head{position:absolute;left:0;right:0;top:0;text-align:center;font-family:var(--display);font-weight:700;font-size:72px;line-height:1.08}
+  .end{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0}
+  .end img{width:320px;height:320px;border-radius:70px;box-shadow:0 0 110px color-mix(in srgb, var(--accent) 50%, transparent)}
+  .end .name{margin-top:44px;font-family:var(--display);font-weight:700;font-size:104px;letter-spacing:4px}
+  .end .link{margin-top:20px;font-weight:700;font-size:52px;color:var(--accent)}
+</style></head>
+<body>
+<div class="glow"></div>
+<div class="phone" id="phone"><div class="screen" id="screen"></div></div>
+<div class="safe"><div class="head words" id="head"></div></div>
+<div class="end" id="end"><img id="logo" alt=""><div class="name words" id="name"></div><div class="link words" id="link"></div></div>
+<script src="../runtime.js"></script>
+<script>
+// App tour: one screenshot and one headline per frame, then the logo end card.
+const { SB, BRAND, W, H, SAFE, tw, out, back, frames, file, pace } = S4F;
+const phone = document.getElementById("phone"), screen = document.getElementById("screen"), head = document.getElementById("head");
+const end = document.getElementById("end");
+document.getElementById("logo").src = file(BRAND.logo || "");
+document.getElementById("name").textContent = (SB.brandName || SB.brand || "").toUpperCase();
+document.getElementById("link").textContent = SB.cta || "";
+// The phone sits under the headline: 19.5:9, as tall as the space allows.
+const PH = Math.min(H - 600, 1220), PW = Math.round(PH * 0.462);
+Object.assign(phone.style, { width: PW + "px", height: PH + "px", marginLeft: -(PW / 2 + 14) + "px", top: "520px" });
+const shots = frames.filter((f) => !f.endCard).map((f) => {
+  const im = document.createElement("img"); im.src = file(f.screen || ""); screen.appendChild(im); return { f, im };
+});
+const endAt = (frames.find((f) => f.endCard) || { start: 1e9 }).start;
+const IN = 0.5 * pace;
+S4F.setup((t) => {
+  const rise = tw(t, 0, 0.7 * pace, out);
+  phone.style.transform = `translateY(${(1 - rise) * 500}px) scale(${0.94 + 0.06 * rise})`;
+  phone.style.opacity = Math.min(1, rise * 2);
+  shots.forEach(({ f, im }, i) => {
+    const a = i === 0 ? 1 : tw(t, f.start, f.start + IN, out);
+    const visible = t >= (i === 0 ? -1 : f.start) && t < f.end + IN;
+    im.style.display = visible ? "block" : "none";
+    im.style.zIndex = i;
+    im.style.transform = `translateX(${(1 - a) * 100}%)`;
+  });
+  const cur = frames.filter((f) => !f.endCard).reduce((c, f) => (t >= f.start ? f : c), frames[0]);
+  if (cur && t < endAt) {
+    head.textContent = cur.words || "";
+    const h = tw(t, cur.start + 0.1 * pace, cur.start + 0.1 * pace + IN, out);
+    head.style.opacity = h; head.style.transform = `translateY(${(1 - h) * 34}px)`;
+  }
+  // End card: the phone and the headline leave, the logo pops in.
+  const e = tw(t, endAt, endAt + 0.5 * pace, out);
+  if (t >= endAt) {
+    phone.style.opacity = 1 - e; head.style.opacity = 1 - e;
+    end.style.opacity = e;
+    document.getElementById("logo").style.transform = `scale(${0.6 + 0.4 * tw(t, endAt, endAt + 0.6 * pace, back)})`;
+  } else end.style.opacity = 0;
+});
+</script>
+</body></html>

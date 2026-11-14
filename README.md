@@ -5,6 +5,7 @@ Studio4Free turns a long YouTube video into short vertical clips and schedules t
 - `page/studio.html` is the phone-first page where jobs, clips and the schedule live.
 - `studio/` is the program a Claude Code session runs: fetch, transcribe, cut, schedule, post.
 - `CLAUDE.md` tells any Claude Code session how to run a job from start to finish.
+- `brands/<brand-id>/` is a brand's brain for ad jobs, and `studio/ads/` holds the ad styles. See "Business automation" in `CLAUDE.md`.
 
 ```
 pip install -r requirements.txt
