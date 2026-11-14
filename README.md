@@ -1,6 +1,6 @@
 <h1 align="center">studio4free</h1>
 
-<p align="center"><b>AI apps built by Philip Werner</b><br>
+<p align="center"><b>AI apps built by Philip Werner ("Cohesive")</b><br>
 U.S. Air Force veteran · AI-assisted developer · Tampa, FL</p>
 
 ---
