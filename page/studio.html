@@ -1,0 +1,1441 @@
+<title>Studio4Free</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: obsidian canvas, hairline structure, mono labels. The live phone is the only object with colour: a prism edge. */
+:root{
+  --bg:#101010; --band:#080808; --ink:#f3f3f3; --mut:#9c9c9c; --ash:#c1c1c1; --line:#212121; --iron:#474747; --slate:#3b3d45;
+  --white:#ffffff; --gold:#6f6759; --live:#98ff38; --warn:#ffb547;
+  --live-haze:rgba(152,255,56,.07); --live-line:rgba(152,255,56,.38); --live-glow:rgba(152,255,56,.5);
+  --prism:conic-gradient(from 210deg,#ff6ad5,#ffb36b,#f8ff7a,#6bffb8,#6bc7ff,#a97bff,#ff6ad5);
+  --sans:"Inter Tight","Inter",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono","IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{color:var(--ink);font:400 16px/1.5 var(--sans);-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 calc(104px + env(safe-area-inset-bottom,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:31;background:var(--bg)}
+h1,h2,h3,p{margin:0}
+h1,h2{font-weight:400;letter-spacing:-.025em;line-height:1.05;text-wrap:balance}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--white);outline-offset:3px}
+.wrap{max-width:1080px;margin:0 auto}
+.lab{font:500 11.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.mut{color:var(--mut)}
+.small{font-size:14px}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--bg);display:flex;align-items:center;gap:12px;padding-block:14px 12px;border-bottom:1px solid var(--line)}
+.logo{font-size:18px;font-weight:500;letter-spacing:-.02em;flex:1}
+.logo i{font-style:normal;color:var(--mut)}
+.badge{display:inline-flex;align-items:center;gap:7px;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ash);border:1px solid var(--iron);border-radius:4px;padding:5px 8px}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--live)}
+
+/* progress */
+.steps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;padding-block:14px 4px}
+.steps button{border:0;background:none;padding:0;text-align:left;display:flex;flex-direction:column;gap:7px;min-width:0}
+.steps i{display:block;height:2px;border-radius:2px;background:var(--line)}
+.steps span{font:500 11px var(--mono);letter-spacing:.03em;color:var(--iron);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.steps .done i{background:var(--ash)} .steps .done span{color:var(--mut)}
+.steps .now i{background:var(--prism)} .steps .now span{color:var(--ink)}
+.steps button[disabled]{cursor:default}
+
+/* main grid */
+.main{display:grid;gap:22px;padding-top:18px}
+.stage{display:flex;gap:14px;align-items:flex-start;min-width:0}
+.stage.sticky{position:sticky;top:calc(env(safe-area-inset-top,0px) + 62px);z-index:20;background:var(--bg);padding-block:8px 14px;border-bottom:1px solid var(--line);margin-inline:-16px;padding-inline:16px}
+.stage .side{display:flex;flex-direction:column;gap:10px;min-width:0;flex:1;padding-top:4px}
+.hint{font-size:15.5px;line-height:1.4}
+.hint b{font-weight:500}
+.fine{font:400 11.5px/1.4 var(--mono);color:var(--iron)}
+.content{display:flex;flex-direction:column;gap:30px;min-width:0}
+.head{display:flex;flex-direction:column;gap:10px}
+.head h2{font-size:clamp(32px,7vw,52px)}
+.head p{color:var(--mut);max-width:52ch}
+.group{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:18px}
+.group>.gh{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+@media (min-width:900px){
+  .main{grid-template-columns:minmax(0,1fr) 320px;gap:56px;padding-top:30px}
+  .stage,.stage.sticky{grid-column:2;grid-row:1;position:sticky;top:120px;flex-direction:column;align-items:stretch;margin:0;padding:0;border:0;background:none}
+  .content{grid-column:1;grid-row:1}
+}
+
+/* option rows */
+.opts{display:grid;gap:8px}
+.opts.two{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.opt{display:flex;gap:12px;align-items:center;text-align:left;width:100%;background:none;border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-height:56px;transition:border-color .15s}
+.opt:hover{border-color:var(--iron)}
+.opt .tx{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.opt b{font-weight:500;font-size:16px}
+.opt small{font-size:13.5px;color:var(--mut);line-height:1.35}
+.opt .ck{flex:none;width:20px;height:20px;border-radius:50%;border:1px solid var(--iron);display:grid;place-items:center}
+.opt.multi .ck{border-radius:5px}
+.opt[aria-pressed="true"]{border-color:var(--ink)}
+.opt[aria-pressed="true"] .ck{background:var(--white);border-color:var(--white)}
+.opt[aria-pressed="true"] .ck::after{content:"";width:8px;height:5px;border:2px solid #101010;border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:none;border-radius:999px;min-height:40px;padding:0 15px;font-size:15px}
+.chip[aria-pressed="true"]{background:var(--white);color:#101010;border-color:var(--white);font-weight:500}
+
+/* mini overlay sketches */
+.mini{flex:none;width:30px;height:52px;border:1px solid var(--iron);border-radius:5px;position:relative;overflow:hidden;background:#1a1a1a}
+.mini i,.mini u{position:absolute;display:block;left:4px;right:4px}
+.mini i{height:6px;background:var(--ash);border-radius:1px}
+.mini u{height:3px;background:var(--mut);bottom:12px;left:7px;right:7px}
+.mini[data-ov=banner] i{top:0;left:0;right:0;height:9px;background:#000;border-bottom:2px solid var(--ash)}
+.mini[data-ov=glass] i{top:5px;height:9px;border-radius:2px;background:rgba(255,255,255,.35)}
+.mini[data-ov=lower] i{bottom:18px;right:10px;height:5px}
+.mini[data-ov=wide]{background:#000}.mini[data-ov=wide]::after{content:"";position:absolute;left:0;right:0;top:17px;height:16px;background:#3a3550}
+.mini[data-ov=wide] i{top:7px;height:4px}
+.mini[data-ov=poster] i{top:10px;height:12px;left:3px;right:3px}
+.mini[data-ov=first] i{top:0;left:0;right:0;height:8px;background:#ffd23f}
+
+/* fields */
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field label,.field .fl{font-weight:500;font-size:15.5px}
+.field .fh{font-size:13.5px;color:var(--mut)}
+input[type=text],input[type=url],input[type=time],select,textarea{width:100%;min-width:0;min-height:48px;background:var(--band);border:1px solid var(--iron);border-radius:8px;padding:11px 14px;font-size:16px}
+textarea{min-height:76px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--white)}
+select{-webkit-appearance:none;appearance:none;padding-right:42px;cursor:pointer;background-repeat:no-repeat;background-position:right 14px center;background-size:14px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c1c1c1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")}
+.tune{display:flex;flex-direction:column;gap:16px;border:1px solid var(--slate);border-radius:8px;padding:16px}
+.sw{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.swb{width:36px;height:36px;border-radius:50%;border:1px solid var(--iron);padding:0}
+.swb[aria-pressed="true"]{outline:2px solid var(--white);outline-offset:3px}
+.swc{display:inline-flex;gap:8px;align-items:center;font-size:14px;color:var(--ash);border:1px solid var(--line);border-radius:999px;padding:0 13px 0 4px;min-height:40px;cursor:pointer}
+.swc input{width:30px;height:30px;border:0;padding:0;background:none;cursor:pointer}
+input::placeholder,textarea::placeholder{color:var(--iron)}
+.slotrow{display:flex;gap:8px;align-items:center}
+.slotrow input[type=time]{flex:0 0 132px;width:auto}
+.slotrow input[type=text]{flex:1 1 0;width:auto}
+
+/* buttons */
+.btn{border:1px solid var(--ink);background:none;border-radius:8px;min-height:48px;padding:0 18px;font-size:16px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.pri{background:var(--white);color:#101010;border-color:var(--white);border-radius:999px}
+.btn.ghost{border-color:var(--iron);color:var(--ash)}
+.btn.sm{min-height:38px;padding:0 13px;font-size:14px}
+.btn[disabled]{opacity:.4;cursor:default}
+.btn.wide{width:100%}
+.x{flex:none;width:44px;height:48px;border:1px solid var(--line);border-radius:8px;background:none;color:var(--mut);font-size:18px}
+
+/* bottom nav */
+.nav{position:fixed;z-index:40;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);
+  padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:46vh;z-index:-1;pointer-events:none;background:radial-gradient(70% 100% at 50% 100%,var(--live-haze),transparent 72%)}
+.nav{background:rgba(16,16,16,.86);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top-color:transparent}
+.nav::before{content:"";position:absolute;left:0;right:0;top:-1px;height:1px;background:linear-gradient(90deg,transparent,var(--live-line) 30%,var(--live-line) 70%,transparent)}
+.nav .btn.pri{box-shadow:0 8px 28px -10px var(--live-glow)}
+.nav .in{max-width:1080px;margin:0 auto;display:flex;gap:10px;align-items:center}
+.nav .why{flex:1;min-width:0;font-size:13px;color:var(--warn)}
+.nav .btn.pri{min-width:160px}
+
+/* cards for demos */
+.panel{border:1px solid var(--slate);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0;width:100%}
+.flow{display:grid;grid-template-columns:1fr;gap:8px}
+.node{border:1px solid var(--iron);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:15px}
+.node .st{font:500 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mut)}
+.node.on{border-color:var(--ink)} .node.on .st{color:var(--live)}
+.node.off{border-style:dashed;color:var(--iron)}
+.arrow{font:400 12px var(--mono);color:var(--iron);padding-left:12px}
+.chan{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.chan .node{flex-direction:column;align-items:flex-start;gap:4px;padding:9px 10px;font-size:14px}
+
+.post{display:flex;flex-direction:column;gap:10px}
+.post .pt{font-weight:500;font-size:16px}
+.post .pd{font-size:14px;color:var(--ash);white-space:pre-wrap;overflow-wrap:anywhere}
+.post mark{background:none;color:var(--ink);border-bottom:1px solid var(--live)}
+.post .cm{display:flex;gap:10px;border-top:1px solid var(--line);padding-top:10px;font-size:14px}
+.post .av{flex:none;width:26px;height:26px;border-radius:50%;background:var(--slate)}
+
+.track{position:relative;height:30px;border-top:1px solid var(--iron);margin-top:10px}
+.track .tk{position:absolute;top:-1px;width:1px;height:6px;background:var(--iron)}
+.track .tl{position:absolute;top:8px;transform:translateX(-50%);font:400 10.5px var(--mono);color:var(--iron)}
+.track .dot{position:absolute;top:-6px;width:11px;height:11px;margin-left:-5.5px;border-radius:50%;background:var(--white)}
+.days{display:flex;flex-direction:column;gap:0}
+.dayrow{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;padding-block:10px;border-top:1px solid var(--line)}
+.dayrow b{font-weight:500;font-size:14px}
+.dayrow .sl{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font:500 11.5px var(--mono);border:1px solid var(--iron);border-radius:4px;padding:4px 7px;color:var(--ash);white-space:nowrap}
+.tag.end{border-color:var(--gold);color:#d8cdb8}
+
+.brief{font-size:clamp(20px,3.4vw,25px);line-height:1.35;letter-spacing:-.01em}
+.brief em{font-style:normal;border-bottom:1px solid var(--live)}
+
+/* recap */
+.rec{display:flex;flex-direction:column}
+.recrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding-block:14px;border-top:1px solid var(--line)}
+.recrow .v{font-size:16px;overflow-wrap:anywhere}
+.recrow .btn{grid-row:1/3;grid-column:2}
+.pipe{display:grid;gap:0;counter-reset:p}
+.pipe div{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding-block:12px;border-top:1px solid var(--line);font-size:15px}
+.pipe div::before{counter-increment:p;content:"0" counter(p);font:500 12px var(--mono);color:var(--mut);padding-top:3px}
+
+/* sign-in */
+.hero{display:flex;flex-direction:column;gap:16px;padding-block:44px 30px;border-bottom:1px solid var(--line)}
+.hero h1{font-size:clamp(40px,9vw,72px)}
+.hero p{color:var(--mut);font-size:18px;max-width:40ch}
+.paths{display:grid;gap:12px;padding-top:26px}
+@media (min-width:720px){.paths{grid-template-columns:1fr 1fr}}
+.path{border:1px solid var(--slate);border-radius:8px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.path h3{font-weight:500;font-size:21px;letter-spacing:-.01em}
+.num{font:500 clamp(30px,8vw,40px)/1 var(--mono);letter-spacing:.06em}
+.err{font-size:14px;color:var(--warn);min-height:1em}
+.note{border:1px solid var(--iron);border-radius:8px;padding:12px 14px;font-size:14.5px;color:var(--ash)}
+
+/* ===== the phone ===== */
+.phone{position:relative;flex:none;width:132px;aspect-ratio:9/16;max-width:100%;border-radius:18px;overflow:hidden;background:#0b0a14;container-type:inline-size;isolation:isolate}
+.phone::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;background:var(--prism);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:9}
+@media (min-width:900px){.phone{width:100%;border-radius:28px}}
+.phone.big{width:min(100%,250px);margin-inline:auto}
+@media (min-width:900px){.phone.big{width:100%}}
+.scene{position:absolute;inset:0;transform-origin:50% 45%;will-change:transform}
+.scene svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scene .sw{display:none}
+.phone[data-ov=wide] .scene{inset:31% 0 auto;height:32%}
+.phone[data-ov=wide] .scene .st{display:none}.phone[data-ov=wide] .scene .sw{display:block}
+.tb{position:absolute;left:0;right:0;top:0;z-index:3;display:flex;flex-direction:column;gap:2cqw;transition:opacity .3s}
+.tt{font-family:var(--sans);font-weight:600;font-size:7.4cqw;line-height:1.12;letter-spacing:-.01em;color:#fff;text-wrap:balance}
+.br{display:flex;align-items:center;gap:2cqw;font:500 4.6cqw/1 var(--sans);color:rgba(255,255,255,.85)}
+.mk{flex:none;width:5cqw;height:5cqw;border-radius:1.4cqw;background:var(--prism)}
+.phone{--ovbg:#000;--ovfg:#fff;--tint:#fff;--gb:6px;--gr:5cqw;--tilt:-4deg;--fw:2.2cqw;--pc:#fff;--ps:12cqw;--hl:#f8ff7a}
+.phone[data-ov=banner] .tb{background:var(--ovbg);padding:13cqw 6cqw 5cqw}
+.phone[data-ov=banner] .tt,.phone[data-ov=banner] .tb .br{color:var(--ovfg)}
+.phone[data-ov=banner][data-pos=bottom] .tb{top:auto;bottom:0;padding:5cqw 6cqw 9cqw}
+.phone[data-ov=glass] .tb{top:12cqw;left:6cqw;right:6cqw;padding:5cqw;border-radius:var(--gr);background:color-mix(in srgb,var(--tint) 22%,transparent);border:1px solid color-mix(in srgb,var(--tint) 50%,transparent);-webkit-backdrop-filter:blur(var(--gb));backdrop-filter:blur(var(--gb))}
+.phone[data-ov=poster] .tb{top:22%;padding:0 7cqw}
+.phone[data-ov=poster] .tt{font-size:var(--ps);line-height:1.02;color:var(--pc);text-shadow:0 1cqw 4cqw rgba(0,0,0,.5)}
+.phone[data-ov=poster] .tb .br,.phone[data-ov=sticker] .tb .br,.phone[data-ov=frame] .tb .br{display:none}
+.phone[data-ov=sticker] .tb{top:17%;left:8cqw;right:auto;max-width:80%;padding:3.5cqw 4.5cqw;border-radius:3cqw;background:var(--ovbg);transform:rotate(var(--tilt));box-shadow:0 1.4cqw 0 rgba(0,0,0,.35)}
+.phone[data-ov=sticker] .tt{color:var(--ovfg);font-size:8cqw}
+.frm{position:absolute;inset:0;z-index:2;pointer-events:none;border:var(--fw) solid var(--ovbg);border-top-width:24cqw;border-bottom-width:12cqw;display:none}
+.phone[data-ov=frame] .frm{display:block}
+.phone[data-ov=frame] .tb{height:24cqw;padding:6cqw 6cqw 0;justify-content:center}
+.phone[data-ov=frame] .tt{color:var(--ovfg);font-size:6.6cqw}
+.phone[data-ov=frame] .bu{bottom:3.6cqw;color:var(--ovfg)}
+.phone.dragging .caps{transition:none}
+.phone.edit{cursor:ns-resize;touch-action:none}
+.phone.edit .caps{outline:1px dashed rgba(255,255,255,.55);outline-offset:1.5cqw;border-radius:2cqw}
+.fz{position:absolute;left:27%;right:27%;z-index:3;border:1.5px dashed transparent;border-radius:40%;pointer-events:none;transition:border-color .2s}
+.fz span{position:absolute;top:-6cqw;left:50%;transform:translateX(-50%);font:500 3.6cqw var(--mono);color:transparent;text-transform:uppercase;letter-spacing:.08em}
+.phone.dragging .fz{border-color:rgba(255,255,255,.6)}.phone.dragging .fz span{color:rgba(255,255,255,.85)}
+.phone.dragging .fz.hit{border-color:var(--warn)}.phone.dragging .fz.hit span{color:var(--warn)}
+.vm{position:absolute;right:4cqw;bottom:4.5cqw;z-index:8;display:flex;gap:1cqw;align-items:flex-end;height:7cqw}
+.vm i{display:block;width:1.6cqw;height:100%;background:#fff;border-radius:1cqw;transform-origin:bottom;transform:scaleY(.06)}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tilebtn{background:none;border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:6px;align-items:center;min-width:0;color:var(--mut)}
+.tilebtn[aria-pressed="true"]{border-color:var(--ink);color:var(--ink)}
+.tilebtn .phone{width:100%;border-radius:12px;pointer-events:none}
+.tilebtn span{font:500 11px var(--mono)}
+.car{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin-inline:-16px;padding:4px 16px 8px;cursor:grab;-webkit-user-select:none;user-select:none}
+.car.drag{cursor:grabbing;scroll-snap-type:none}
+.car::-webkit-scrollbar{display:none}
+.cc{flex:0 0 clamp(150px,40vw,180px);scroll-snap-align:start;background:none;border:1px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:8px;text-align:left;color:var(--ink);transition:border-color .15s}
+.cc:hover{border-color:var(--iron)}
+.cc .phone{width:100%;border-radius:12px;pointer-events:none}
+.cc b{font-weight:500;font-size:14px;line-height:1.25}
+.cc .tag{align-self:flex-start}
+.tag.sent{border-color:var(--live);color:var(--live)}
+.carhead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.arrows{display:flex;gap:6px}
+.ov{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.75);display:grid;place-items:center;
+  padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.ovin{width:min(100%,800px);max-height:100%;overflow:auto;background:var(--bg);border:1px solid var(--slate);border-radius:12px;padding:16px;display:grid;gap:18px}
+@media (min-width:720px){.ovin{grid-template-columns:270px minmax(0,1fr);padding:22px}}
+.ovin .phone{width:min(100%,240px);margin-inline:auto}
+@media (min-width:720px){.ovin .phone{width:100%}}
+.ovhead{grid-column:1/-1;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.ovhead h3{font-weight:400;font-size:26px;letter-spacing:-.02em;line-height:1.15}
+.ctl{display:flex;flex-direction:column;gap:12px;border:1px solid var(--slate);border-radius:8px;padding:14px}
+input[type=range]{width:100%;accent-color:#ffffff;min-height:32px}
+.bu{position:absolute;left:0;right:0;bottom:15%;z-index:3;justify-content:center;opacity:0;transition:opacity .3s}
+.caps{position:absolute;left:5cqw;right:5cqw;top:78%;transform:translateY(-50%);transition:top .35s ease;z-index:4;text-align:center;font:800 9.6cqw/1.12 var(--sans);letter-spacing:-.01em;color:#fff;text-transform:uppercase;
+  text-shadow:0 0 .6cqw #000,0 .6cqw 0 #000,.6cqw 0 0 #000,-.6cqw 0 0 #000,0 -.6cqw 0 #000}
+.caps .w{opacity:.9}
+.caps .w.on{color:var(--hl);opacity:1}
+.caps .w.bleep{color:#ff8ab1}
+.mute{position:absolute;right:4cqw;top:4cqw;z-index:6;display:flex;align-items:center;gap:1.5cqw;font:600 4cqw/1 var(--mono);background:rgba(0,0,0,.7);color:#fff;padding:2cqw 3cqw;border-radius:99px;opacity:0;transition:opacity .15s}
+.mute svg{width:4.6cqw;height:4.6cqw}
+.end{position:absolute;inset:0;z-index:7;background:#080808;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4cqw;opacity:0;transition:opacity .25s;text-align:center;padding:8cqw}
+.end .mk{width:20cqw;height:20cqw;border-radius:5cqw}
+.end b{font:500 8cqw/1.1 var(--sans);color:#fff;overflow-wrap:anywhere}
+.end span{font:400 4.6cqw/1.3 var(--mono);color:#9c9c9c}
+.cban{position:absolute;top:0;left:0;width:100%;height:auto;z-index:5;display:block}
+.tb.gone{visibility:hidden}
+.end video,.endv video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.edf{display:contents}
+.endv{position:absolute;inset:0;z-index:7;background:#000;opacity:0;transition:opacity .25s}
+.up{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.fname{font:400 13px var(--mono);color:var(--ash);overflow-wrap:anywhere;min-width:0}
+.pbar{position:absolute;left:0;right:0;bottom:0;height:1.2cqw;z-index:8;background:rgba(255,255,255,.12)}
+.pbar i{display:block;height:100%;width:0;background:#fff}
+.plabel{position:absolute;left:4cqw;bottom:4cqw;z-index:8;font:500 3.6cqw/1 var(--mono);letter-spacing:.08em;color:rgba(255,255,255,.55);text-transform:uppercase}
+
+@media (prefers-reduced-motion:reduce){.opt,.tb,.bu,.end,.mute{transition:none}}
+
+/* ===== the working studio: the same language, applied to jobs, the queue and the schedule ===== */
+a{color:var(--ink)}
+.save{font:400 11.5px var(--mono);color:var(--mut);white-space:nowrap;min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}
+.badge{max-width:44vw;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.steps.tabs{grid-template-columns:repeat(5,minmax(0,1fr))}
+.steps.tabs button{cursor:pointer}
+.steps.tabs span{color:var(--mut)}
+.sect{display:flex;flex-direction:column;gap:14px;min-width:0}
+.pagehead{display:flex;flex-direction:column;gap:10px;padding-top:18px}
+.pagehead h2{font-size:clamp(32px,7vw,52px)}
+.pagehead p{color:var(--mut);max-width:52ch}
+.stack{display:flex;flex-direction:column;gap:22px;padding-top:6px;min-width:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grow{flex:1 1 140px;min-width:0}
+.card{border:1px solid var(--slate);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0;width:100%;text-align:left;background:none;color:inherit}
+button.card{transition:border-color .15s}
+button.card:hover{border-color:var(--iron)}
+.card h3{font-weight:500;font-size:18px;letter-spacing:-.01em;line-height:1.25;overflow-wrap:anywhere}
+.pill{display:inline-block;font:500 11.5px var(--mono);border:1px solid var(--iron);border-radius:4px;padding:4px 7px;color:var(--ash);white-space:nowrap}
+.pill.ok{border-color:var(--live);color:var(--live)}
+.pill.wait{border-color:var(--warn);color:var(--warn)}
+.pill.info{border-color:#6bc7ff;color:#6bc7ff}
+.pill.hot{background:var(--white);border-color:var(--white);color:#101010}
+.pill.bad{border-color:#ff7a7a;color:#ff9c9c}
+.empty{border:1px dashed var(--iron);border-radius:8px;padding:20px 16px;color:var(--mut)}
+.empty b{color:var(--ink);font-weight:500}
+.rules ul{margin:6px 0 0;padding-left:18px}
+.rules li{margin-bottom:4px}
+.btn.warn{border-color:#7a3030;color:#ff9c9c}
+.btn.grow{flex:1 1 140px}
+a.btn{text-decoration:none}
+input[type=datetime-local]{width:100%;min-width:0;min-height:48px;background:var(--band);border:1px solid var(--iron);border-radius:8px;padding:11px 14px;font-size:16px}
+.pick{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start;padding-block:12px;border-top:1px solid var(--line)}
+.pick:first-of-type{border-top:0}
+.pick b{font-weight:500;overflow-wrap:anywhere}
+.pick .tcode{grid-column:1/-1;font:400 12px var(--mono);color:var(--mut)}
+.clip{display:grid;grid-template-columns:118px minmax(0,1fr);gap:14px;align-items:start}
+.clip video,.clip .ph{width:118px;aspect-ratio:9/16;border-radius:12px;background:#000;object-fit:cover;display:block;border:1px solid var(--iron)}
+.clip .ph{display:grid;place-items:center;color:var(--mut);font:400 12px var(--mono);text-align:center;padding:6px}
+.clip .side{display:flex;flex-direction:column;gap:9px;min-width:0}
+.cliprow{gap:8px}
+.day{display:flex;flex-direction:column;min-width:0}
+.day>h3{font:500 11.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut);padding-block:18px 10px}
+.slot{display:grid;grid-template-columns:54px minmax(0,1fr);gap:12px;align-items:start;border-top:1px solid var(--line);padding-block:12px}
+.slot.open{color:var(--iron)}
+.slot .t{font:500 13px var(--mono);padding-top:2px}
+.slot .b{display:flex;flex-direction:column;gap:7px;min-width:0}
+.slot .b b{font-weight:500;overflow-wrap:anywhere;line-height:1.3}
+.slot .st,.from{font-size:13.5px;color:var(--mut);overflow-wrap:anywhere}
+.acctrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding-block:14px;border-top:1px solid var(--line)}
+.acctrow .code{font:500 17px var(--mono);letter-spacing:.04em;-webkit-user-select:all;user-select:all;overflow-wrap:anywhere}
+/* a real clip inside the phone frame */
+.phone video.real{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.phone .ph0{position:absolute;inset:0;display:grid;place-items:center;padding:8cqw;text-align:center;font:500 7cqw/1.2 var(--sans);color:var(--ash)}
+.phone.edit .caps.capmark{font-size:6.4cqw;letter-spacing:.06em;transition:none;pointer-events:none}
+.phone.edit video.real{pointer-events:none}
+</style>
+
+<div class="wrap">
+  <div class="top"><div class="logo">Studio<i>4</i>Free</div><span class="save" id="save" role="status"></span><span class="badge" id="badge" hidden></span></div>
+  <nav class="steps tabs" id="tabs" aria-label="Studio sections" hidden></nav>
+  <div id="app"></div>
+</div>
+<nav class="nav" id="nav" hidden><div class="in"><button class="btn ghost" id="bk" type="button">Back</button><span class="why" id="why" role="status"></span><button class="btn pri" id="nx" type="button">Next</button></div></nav>
+
+<script>
+(() => {
+'use strict';
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs){ const v = attrs[k]; if (v == null || v === false) continue;
+    if (k === 'class') e.className = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k === 'value') e.value = v; else if (k === 'html') e.innerHTML = v; else e.setAttribute(k, v === true ? '' : v); }
+  for (const kid of kids.flat(3)){ if (kid == null || kid === false) continue; e.append(kid.nodeType ? kid : document.createTextNode(String(kid))); }
+  return e;
+}
+
+/* ---------- settings: what a missing field of a settings document means ---------- */
+const OVDEF = { Poster:{color:'#ffffff', size:'Large', hold:'2'}, Banner:{bg:'#000000', fg:'#ffffff', pos:'Top'}, 'Glass card':{tint:'#ffffff', blur:'Soft', round:'Round'},
+  Sticker:{bg:'#f8ff7a', tilt:'Left'}, Frame:{color:'#ff6ad5', width:'Thin'} };
+const DEF = { times:['12:15','17:00'], tz:'America/Chicago', services:['YouTube','TikTok'], brand:'', descTail:'', count:'10', len:'20 to 40 seconds',
+  kinds:['Strong opinions','Funny moments','Emotional moments'], fit:'Black banner with title and brand', zoom:'Smooth', captions:'Yes', language:'Mute it',
+  parts:'Split long stories into parts', overlay:'Poster', capColor:'#ffe300', flashDays:['Tuesday','Friday'], comment:'', buffer:'' };
+// The first (legacy) account keeps DEF. A new account starts cleaner.
+const defaults = legacy => Object.assign({}, DEF, legacy ? null : {services:['YouTube','Instagram'], flashDays:[]});
+const ESTYLES = ['Quick-cut talking clip','Raw funny moments','Heavy-edit comedy'];
+const EDITS = ['Cut filler words','Cut silences','Add captions','Mute strong language','Add a title at the top','Make it vertical'];
+const STATUS = { sent:['Waiting for Claude Code','wait'], working:['Claude Code is working','info'], shortlist:['Pick your clips','hot'], cutting:['Cutting clips','info'], checking:['Checking the rules','info'],
+  review:['Check the clips','hot'], scheduling:['Sending to Buffer','info'], scheduled:['Scheduled','ok'], done:['Done','ok'], blocked:['Blocked','wait'] };
+
+// screen: signin, admin, step (the five setup steps), recap (the studio home), start (new clips), edit (new edit job), jobs, job, queue, schedule, setup.
+// key and acct are the open account. gate is the state of the sign-in form. ALL holds every job; S.jobs holds the open account's.
+const S = { screen:'signin', step:0, id:null, jobs:new Map(), set:{}, store:'wait', note:'', key:null, acct:null, busy:true, old:null,
+  gate:{mode:'in', key:'', msg:'', remember:true, wait:false, newKey:''}, pday:'flash', hint:'', err:'', back:false, welcome:true,
+  showPast:false, open:new Set(), q:'next', form:null, preset:'', presetMsg:'', link:'', job:'', show:'', want:'' };
+let db = null, col = null, setDoc = null, acctDoc = null, comments = null, downloads = null, assets = null, owner = false;
+let ALL = new Map(), setLS = 's4f.set', watches = [], saveT = 0, lastSaved = '';
+const ovName = () => OV[S.set.overlay] ? S.set.overlay : 'Poster';
+// The setup screens read and write their choices through C. It is the open account's settings.
+const C = new Proxy({}, { get:(_, k) => k === 'overlay' ? ovName() : S.set[k], set:(_, k, v) => { S.set[k] = v; return true; } });
+
+const OV = {Poster:'poster',Banner:'banner','Glass card':'glass',Sticker:'sticker',Frame:'frame'};
+const OVD = {
+  Poster:'A big title shows first. Then your brand moves under the captions.',
+  Banner:'A solid bar holds the title and your brand. You pick its color and place.',
+  'Glass card':'A frosted card floats at the top. The video shows through it.',
+  Sticker:'The title sits on a tilted color sticker. Your brand stays under the captions.',
+  Frame:'A color frame wraps the clip. The title sits in the top edge, your brand in the bottom.' };
+const SW = [['Black','#000000'],['White','#ffffff'],['Lime','#f8ff7a'],['Pink','#ff6ad5'],['Sky','#6bc7ff'],['Orange','#ff8a3d']];
+const SWT = [['White','#ffffff'],['Black','#111111'],['Lime','#f8ff7a']];
+const OVSET = {
+  Poster:[['color','Title color','color',SW.slice(1)],['size','Title size','seg',['Small','Medium','Large']],['hold','Title stays for','seg',['1','1.5','2','3'],v => v + ' s']],
+  Banner:[['bg','Bar color','color',SW],['fg','Text color','color',SWT],['pos','Bar position','seg',['Top','Bottom']]],
+  'Glass card':[['tint','Glass tint','color',SW.slice(1)],['blur','Blur','seg',['Soft','Strong']],['round','Corners','seg',['Round','Square']]],
+  Sticker:[['bg','Sticker color','color',SW],['tilt','Tilt','seg',['Left','None','Right']]],
+  Frame:[['color','Frame color','color',SW],['width','Side edges','seg',['Thin','Thick']]] };
+const SETHINT = {
+  hold:v => 'The title stays for ' + v + (v === '1' ? ' second' : ' seconds') + '. Then it fades.',
+  size:v => 'The title now shows at ' + v.toLowerCase() + ' size.',
+  pos:v => 'The bar now sits at the ' + v.toLowerCase() + ' of the clip.',
+  blur:v => v === 'Strong' ? 'The glass now hides more of the video behind it.' : 'The glass now shows more of the video behind it.',
+  round:v => v === 'Round' ? 'The card now has round corners.' : 'The card now has square corners.',
+  tilt:v => v === 'None' ? 'The sticker now sits straight.' : 'The sticker now tilts to the ' + v.toLowerCase() + '.',
+  width:v => v === 'Thick' ? 'The frame now has thick side edges.' : 'The frame now has thin side edges.' };
+const ink = hex => { const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255; return (.299 * r + .587 * g + .114 * b) / 255 > .6 ? '#111111' : '#ffffff'; };
+const CAPD = {Yes:'Words appear as the speaker says them. They never cover the speaker’s face.', No:'The clip shows no words. Viewers have to listen.'};
+const ZD = {Smooth:'The picture pushes in on the key line, then eases back out.', 'Slow creep':'The picture moves closer very slowly for the whole clip.', None:'The picture stays still for the whole clip.'};
+const LD = {'Mute it':'Claude mutes each swear word and hides it in the captions.', 'Leave it in':'Claude keeps every word the way the speaker said it.'};
+const CHD = {YouTube:'Each clip posts as a YouTube Short.', TikTok:'Each clip posts to your TikTok account.', Instagram:'Each clip posts as a Reel. Buffer adds your first comment there.'};
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const COUNTS = ['3','5','10','20','As many as are good'];
+const LENS = ['Under 20 seconds','20 to 40 seconds','40 to 60 seconds','Whatever the moment needs'];
+const KINDS = ['Strong opinions','Funny moments','Stories','Advice and tips','Emotional moments','Surprising facts','Disagreements','Quotable one-liners'];
+const TZS = [['America/New_York','Eastern time'],['America/Chicago','Central time'],['America/Denver','Mountain time'],['America/Los_Angeles','Pacific time'],['Europe/London','UK time']];
+
+const fmt12 = t => { const [H, M] = t.split(':').map(Number); return ((H % 12) || 12) + ':' + String(M).padStart(2, '0') + (H < 12 ? ' AM' : ' PM'); };
+const andList = a => a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+const shortDays = a => andList(a.map(d => d.slice(0, 3)));
+const tzName = () => (TZS.find(x => x[0] === C.tz) || [0, C.tz])[1];
+const goodSlots = () => C.slots.filter(s => /^\d\d:\d\d$/.test(s.time)).sort((a, b) => a.time.localeCompare(b.time));
+
+
+/* ---------- settings shape ---------- */
+function norm(s){
+  for (const k of ['services','flashDays','kinds','presets']) s[k] = Array.isArray(s[k]) ? s[k] : [];
+  for (const k of ['brand','descTail','comment','buffer']) s[k] = String(s[k] == null ? '' : s[k]);
+  s.channels = Object.assign({youtube:'', instagram:'', tiktok:''}, s.channels);
+  s.media = Object.assign({banner:null, flash:null, ending:null}, s.media);
+  for (const k in s.media) if (s.media[k] && (s.media[k].temp || !s.media[k].url)) s.media[k] = null;   // a file that lived in one browser tab only
+  const o = s.ovs || {}; s.ovs = {}; for (const k in OVDEF) s.ovs[k] = Object.assign({}, OVDEF[k], o[k]);
+  if (!/^#[0-9a-f]{6}$/i.test(s.capColor || '')) s.capColor = DEF.capColor;
+  s.slots = (Array.isArray(s.slots) && s.slots.length ? s.slots : (s.times || DEF.times).map(t => ({time:t, show:''}))).map(x => ({time:String(x.time || ''), show:String(x.show || '')}));
+  if (!s.tz) s.tz = DEF.tz;
+  if (!TZS.some(z => z[0] === s.tz)) TZS.push([s.tz, s.tz.replace(/_/g, ' ')]);
+  return s;
+}
+
+/* ---------- time ---------- */
+function tzOff(d, tz){ const p = {}; for (const x of new Intl.DateTimeFormat('en-US', {timeZone:tz, hourCycle:'h23', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'}).formatToParts(d)) p[x.type] = +x.value;
+  return (Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(d.getTime() / 1000) * 1000) / 60000; }
+function wallToISO(wall){ const m = /^(\d+)-(\d+)-(\d+)T(\d+):(\d+)/.exec(wall); if (!m) return ''; const g = Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5]);
+  let t = g - tzOff(new Date(g), S.set.tz) * 60000; t = g - tzOff(new Date(t), S.set.tz) * 60000; return new Date(t).toISOString(); }
+function wall(iso){ const d = new Date(iso); if (isNaN(d)) return ''; return new Date(d.getTime() + tzOff(d, S.set.tz) * 60000).toISOString().slice(0, 16); }
+const dayKey = iso => wall(iso).slice(0, 10), hm = iso => wall(iso).slice(11, 16);
+function dayName(key){ const d = new Date(key + 'T12:00:00Z'); return d.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric', timeZone:'UTC'}); }
+const todayKey = () => dayKey(new Date().toISOString());
+const dayShort = iso => new Date(dayKey(iso) + 'T12:00:00Z').toLocaleDateString(undefined, {weekday:'short', timeZone:'UTC'});
+const weekday = iso => new Date(dayKey(iso) + 'T12:00:00Z').toLocaleDateString('en-US', {weekday:'long', timeZone:'UTC'});
+function tcode(s){ s = Math.max(0, +s || 0); const hh = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = Math.floor(s % 60); return (hh ? hh + ':' : '') + String(mm).padStart(2, '0') + ':' + String(ss).padStart(2, '0'); }
+
+/* ---------- storage ---------- */
+const saveEl = document.getElementById('save');
+const say = t => { saveEl.textContent = t; };
+function localGet(k, d){ try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } }
+function localSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+async function saveJob(id, patch){
+  const j = S.jobs.get(id); if (!j) return; Object.assign(j, patch, {updatedAt:Date.now()}); say('Saving…');
+  try { if (S.store === 'db') await col.doc(id).update(Object.assign({}, patch, {updatedAt:j.updatedAt})); else localSet('s4f.jobs', Object.fromEntries(ALL)); say(S.store === 'db' ? 'Saved' : 'Saved on this device only'); }
+  catch (e) { say('Not saved. Check your connection.'); }
+}
+async function addJob(doc){
+  const now = Date.now(); Object.assign(doc, {account:S.key, createdAt:now, updatedAt:now}); let id;
+  try { if (S.store === 'db'){ const ref = col.doc(); id = ref.id; await ref.set(doc); } else { id = 'l' + now.toString(36); }
+    S.jobs.set(id, doc); ALL.set(id, doc); if (S.store !== 'db') localSet('s4f.jobs', Object.fromEntries(ALL)); return id; }
+  catch (e) { say('The job could not be saved.'); return null; }
+}
+async function dropJob(id){ S.jobs.delete(id); ALL.delete(id); try { if (S.store === 'db') await col.doc(id).delete(); else localSet('s4f.jobs', Object.fromEntries(ALL)); } catch (e) { say('The job could not be deleted.'); } go('jobs'); }
+async function saveSet(){
+  if (!S.key) return; S.set.times = [...new Set(goodSlots().map(x => x.time))]; const body = JSON.stringify(S.set); say('Saving…');
+  try { if (S.store === 'db') await setDoc.set(JSON.parse(body)); else localSet(setLS, S.set); lastSaved = body; say(S.store === 'db' ? 'Saved' : 'Saved on this device only'); } catch (e) { say('Settings were not saved.'); }
+}
+// Every choice saves by itself, a moment after the last change.
+function dirty(){ if (!S.key) return; clearTimeout(saveT); saveT = setTimeout(() => { saveT = 0; if (S.key && JSON.stringify(S.set) !== lastSaved) saveSet(); }, 600); }
+
+/* ---------- accounts ---------- */
+// The studio number is the only credential. The page reads and watches accounts/<the entered number>. Only the admin view lists the collection.
+const KEYCH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function newKey(){ let s = ''; const lim = 256 - 256 % KEYCH.length;   // bytes at or over lim are dropped, so every character is equally likely
+  while (s.length < 8) for (const b of crypto.getRandomValues(new Uint8Array(16))) if (b < lim && s.length < 8) s += KEYCH[b % KEYCH.length];
+  return 'S4F-' + s.slice(0, 4) + '-' + s.slice(4); }
+function normKey(v){ let s = String(v == null ? '' : v).toUpperCase().replace(/[\s-]/g, ''); if (s.length === 11 && s.startsWith('S4F')) s = s.slice(3);
+  return s.length === 8 && [...s].every(c => KEYCH.includes(c)) ? 'S4F-' + s.slice(0, 4) + '-' + s.slice(4) : ''; }
+// A job with no account field is from before accounts. It belongs to the legacy account. Old jobs are never rewritten.
+const mine = (j, key, legacy) => !!key && (j.account === key || (!!legacy && !j.account));
+function scope(){ S.jobs = new Map([...ALL].filter(([, j]) => mine(j, S.key, S.acct && S.acct.legacy))); }
+const typing = () => { const a = document.activeElement; return !!a && /INPUT|TEXTAREA|SELECT/.test(a.tagName); };
+// Draw again after a change from the database, unless that would take a field, a setup step or an open clip away from the owner.
+function soft(){ if (S.store === 'wait' || S.busy || typing() || S.gate.wait || ['signin','step','start','edit'].includes(S.screen) || document.querySelector('.ov')) return; render(); }
+// db.d.ts: "unavailable", and any code it does not list, is worth another try. The codes below cannot succeed on this page load.
+const again = e => !/^(invalid_argument|quota_exceeded|revoked|not_granted|capability_disabled|capability_removed|transform_error)$/.test((e && e.code) || '');
+// Local mode reads the stored accounts on every use, so a second tab never writes back an old copy.
+const putAcct = (k, a) => localSet('s4f.accounts', Object.assign(localGet('s4f.accounts', {}), {[k]:a}));
+const NOLOCAL = 'This view only sees studios made on this device. None of them has that number. Open the page inside Claude to reach your studio.';
+const oldJobs = () => [...ALL.values()].filter(j => !j.account).length;
+const offerOld = () => !!S.old && !S.old.claimed && (S.old.main || oldJobs() > 0);
+const unwatch = () => { for (const u of watches) u(); watches = []; };
+function enter(key, a, set){
+  unwatch(); clearTimeout(saveT); saveT = 0; S.key = key; S.acct = Object.assign({}, a); S.set = norm(Object.assign(defaults(a.legacy), set)); lastSaved = JSON.stringify(S.set);
+  PRESETS = S.set.presets; S.preset = ''; setLS = a.legacy ? 's4f.set' : 's4f.set.' + key;
+  if (db){ acctDoc = db.doc('accounts/' + key); setDoc = db.doc(a.legacy ? 'settings/main' : 'settings/' + key);
+    watches = [acctDoc.onSnapshot(x => { if (S.key !== key) return; if (!x.exists){ if (!x.metadata.fromCache) signOut('That studio no longer exists.'); return; } S.acct = Object.assign({}, x.data()); soft(); }, () => {}),
+      // A settings change from elsewhere is taken only while the owner is not in the middle of changing settings here.
+      setDoc.onSnapshot(x => { if (S.key !== key || !x.exists || saveT || ['step','start'].includes(S.screen)) return;
+        const nx = norm(Object.assign(defaults(a.legacy), x.data())), body = JSON.stringify(nx); if (body === JSON.stringify(S.set)) return;
+        S.set = nx; lastSaved = body; PRESETS = S.set.presets; soft(); }, () => {})]; }
+  scope();
+}
+// Returns '' when the account is open, 'none' when no account has that number, or a sentence to show.
+async function openAcct(key, tries){
+  try { let a, set;
+    if (db){ const x = await db.doc('accounts/' + key).get(); if (!x.exists) return 'none'; a = x.data();
+      const sx = await db.doc(a.legacy ? 'settings/main' : 'settings/' + key).get(); set = sx.exists ? sx.data() : {}; }
+    else { a = localGet('s4f.accounts', {})[key]; if (!a) return 'none'; set = localGet(a.legacy ? 's4f.set' : 's4f.set.' + key, {}); }
+    enter(key, a, set); return ''; }
+  catch (e) { if (tries > 0 && again(e)){ await new Promise(ok => setTimeout(ok, 3000)); return openAcct(key, tries - 1); }
+    return 'Your studio cannot be reached. Check your connection and try again.'; }
+}
+// Everything is read before anything is written. When a write fails, the half-made account is removed.
+async function makeAcct(name, legacy, remember){
+  const key = newKey(), a = Object.assign({name, createdAt:Date.now()}, legacy ? {legacy:true, setupDone:true} : null); let set = defaults(false);
+  const taken = 'Your existing studio is already in an account. Sign in with its number.';
+  try {
+    if (db){
+      if (legacy){ const [m, sx] = await Promise.all([db.doc('meta/legacy').get(), db.doc('settings/main').get()]); if (m.exists){ S.old = {claimed:true, main:sx.exists}; return taken; } set = sx.exists ? sx.data() : {}; }
+      await db.doc('accounts/' + key).set(a);
+      if (legacy) await db.doc('meta/legacy').set({claimed:true, at:Date.now()}); else await db.doc('settings/' + key).set(set);
+    } else {
+      if (legacy && localGet('s4f.legacyClaimed', false)){ S.old = {claimed:true, main:true}; return taken; }
+      putAcct(key, a); if (legacy){ localSet('s4f.legacyClaimed', true); set = localGet('s4f.set', {}); } else localSet('s4f.set.' + key, set); }
+  } catch (e) {
+    if (db) db.doc('accounts/' + key).delete().catch(() => {});
+    return 'The studio could not be created. Check your connection and try again.'; }
+  if (legacy) S.old = {claimed:true, main:true};
+  enter(key, a, set); localSet('s4f.key', remember ? key : ''); S.gate.mode = 'show'; S.gate.newKey = key; return '';
+}
+async function saveAcct(patch){ Object.assign(S.acct, patch); say('Saving…');
+  try { if (db) await acctDoc.update(patch); else putAcct(S.key, S.acct); say(db ? 'Saved' : 'Saved on this device only'); } catch (e) { say('The studio was not saved.'); } }
+function signOut(msg, forget){ unwatch(); clearTimeout(saveT); saveT = 0; if (forget) localSet('s4f.key', ''); S.key = null; S.acct = null; S.jobs = new Map(); S.set = {}; PRESETS = [];
+  S.gate = {mode:'in', key:'', msg:msg || '', remember:true, wait:false, newKey:''}; try { location.hash = ''; } catch (e) {} go('signin'); }
+function copyBtn(key, el, id, label){
+  return h('button', {class:'btn ghost sm', type:'button', id, onclick:e => { const b = e.currentTarget;
+    const pick = () => { try { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (err) {} b.textContent = 'Selected. Copy it now.'; };
+    try { navigator.clipboard.writeText(key).then(() => { b.textContent = 'Copied'; }, pick); } catch (err) { pick(); } }}, label || 'Copy number');
+}
+async function tell(el, text){
+  if (!comments) return 'none';
+  try { const can = await comments.canSendToClaude(); if (can !== 'available') return can; const anchor = await comments.anchorFor(el); await comments.sendToClaude({anchor, text}); return 'sent'; }
+  catch (e) { return (e && e.code) || 'error'; }
+}
+const told = r => r === 'sent' ? 'Sent to Claude Code. It starts without you asking.' : 'Saved. No Claude Code session is listening. Open Claude Code in the studio4free repository and say "run the studio jobs".';
+
+/* ---------- the live phone ---------- */
+const W0 = 0.9, WD = 0.42, LOOP = 9;
+// Smart caption rule: a caption page holds at most 3 words, breaks at a pause, shows just before its first word and stays until the next page.
+function mkClip(title, text){ const words = text.split(' '), pages = []; let a = 0;
+  words.forEach((w, i) => { if (i - a === 2 || /[,.!?]$/.test(w) || i === words.length - 1){ pages.push([a, i]); a = i + 1; } });
+  return {title, words, pages, swear:words.findIndex(w => /^damn/i.test(w)), capY:null, vol:100, notes:'', ver:1}; }
+const CLIPS = [mkClip('Why I quit my job at 30', 'I quit my job, and it was the best damn call I ever made.'),
+  mkClip('The advice nobody gives you', 'Nobody tells you the first year is supposed to feel this hard.'),
+  mkClip('Part 1: The week it all broke', 'We lost every client in one week, and I had no damn plan.'),
+  mkClip('Part 2: How we got them back', 'We called every client back, one by one, and asked what broke.'),
+  mkClip('The one habit that saved me', 'I write down one thing I learned before I go to bed.')];
+const defAnchor = () => C.overlay === 'Banner' && C.ovs.Banner.pos === 'Bottom' ? 30 : 78;
+const person = (x, y, s, mouthId) => `<g transform="translate(${x} ${y}) scale(${s})">
+  <path d="M-30 80 C-30 36 -16 26 0 26 C16 26 30 36 30 80 Z" fill="#2f4a7a"/><rect x="-5" y="12" width="10" height="16" fill="#b9826a"/>
+  <ellipse cx="0" cy="0" rx="13" ry="15.5" fill="#c99279"/><path d="M-13 -3 C-14 -18 -3 -19 0 -19 C9 -19 15 -13 13 -2 C9 -10 -6 -12 -13 -3Z" fill="#2a1d1d"/>
+  <path d="M-15 0 C-16 -24 16 -24 15 0" fill="none" stroke="#141414" stroke-width="2.6"/><rect x="-18" y="-4" width="6" height="11" rx="2.5" fill="#141414"/><rect x="12" y="-4" width="6" height="11" rx="2.5" fill="#141414"/>
+  <ellipse ${mouthId ? 'id="' + mouthId + '"' : ''} cx="0" cy="8" rx="3.4" ry="1.3" fill="#5a2a2a"/>
+  <path d="M36 -16 L14 14" stroke="#222" stroke-width="2.4"/><rect x="5" y="9" width="10" height="17" rx="5" fill="#1b1b20" transform="rotate(-30 10 17)"/></g>`;
+const SCENE = `<svg class="st" viewBox="0 0 90 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a2a4f"/><stop offset="1" stop-color="#151226"/></linearGradient>
+  <radialGradient id="lg"><stop offset="0" stop-color="#ffb36b" stop-opacity=".55"/><stop offset="1" stop-color="#ffb36b" stop-opacity="0"/></radialGradient>
+  <radialGradient id="lb"><stop offset="0" stop-color="#6bc7ff" stop-opacity=".4"/><stop offset="1" stop-color="#6bc7ff" stop-opacity="0"/></radialGradient></defs>
+  <rect width="90" height="160" fill="url(#sg)"/><circle cx="14" cy="40" r="22" fill="url(#lg)"/><circle cx="80" cy="56" r="26" fill="url(#lb)"/>
+  <rect x="0" y="66" width="90" height="2" fill="#2b1f35"/><rect x="8" y="56" width="6" height="10" fill="#5b3f5f"/><rect x="16" y="52" width="4" height="14" fill="#7a5568"/><rect x="66" y="58" width="12" height="8" rx="1" fill="#3a3a5a"/>
+  ${person(45, 92, 1, 'mouth')}</svg>
+  <svg class="sw" viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <rect width="160" height="90" fill="url(#sg)"/><circle cx="80" cy="20" r="30" fill="url(#lg)"/><rect x="0" y="40" width="160" height="2" fill="#2b1f35"/>
+  ${person(48, 52, .62, 'mouthw')}${person(114, 54, .6, '')}</svg>`;
+const MUTE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+const phones = [];
+function makePhone(big, clip, edit){
+  clip = clip || CLIPS[0];
+  const p = h('div', {class:'phone' + (big ? ' big' : ''), role:edit ? 'group' : 'img', 'aria-label':edit ? 'Clip preview. Drag up or down to move the captions. Arrow keys work too.' : 'Live preview of a finished clip'});
+  p.innerHTML = '<div class="scene">' + SCENE + '</div><div class="frm"></div><div class="tb"><div class="tt">Why I quit my job at 30</div><div class="br"><i class="mk"></i><span class="bt"></span></div></div>'
+    + '<img class="cban" alt="" hidden><div class="caps"></div><div class="br bu"><i class="mk"></i><span class="bt"></span></div><div class="mute">' + MUTE_SVG + 'Muted</div>'
+    + '<div class="end"><div class="edf"><i class="mk"></i><b class="bt"></b><span class="ed"></span></div><video class="fv" muted playsinline loop hidden></video></div>'
+    + '<div class="endv"><video muted playsinline loop></video></div><div class="pbar"><i></i></div><span class="plabel">Preview</span>';
+  const q = s => p.querySelector(s);
+  const o = {el:p, scene:q('.scene'), tb:q('.tb'), caps:q('.caps'), bu:q('.bu'), mute:q('.mute'), end:q('.end'), edf:q('.edf'), fv:q('.fv'), endv:q('.endv'), ev:q('.endv video'), ban:q('.cban'),
+    bar:q('.pbar i'), page:-1, seg:'', clip, edit:!!edit, mouths:p.querySelectorAll('#mouth,#mouthw')};
+  if (edit){
+    p.classList.add('edit'); p.tabIndex = 0;
+    const fz = h('div', {class:'fz'}, h('span', null, 'Face')), vm = h('div', {class:'vm', 'aria-hidden':'true'}, [0, 1, 2, 3].map(() => h('i')));
+    p.append(fz, vm); o.fz = fz; o.vm = [...vm.children];
+    const yOf = e => { const r = p.getBoundingClientRect(); return Math.min(90, Math.max(10, (e.clientY - r.top) / r.height * 100)); };
+    const up = () => { if (!o.dragging) return; o.dragging = false; p.classList.remove('dragging'); if (o.onDrop) o.onDrop(); };
+    p.addEventListener('pointerdown', e => { if (C.captions !== 'Yes') return; o.dragging = true; p.classList.add('dragging'); try { p.setPointerCapture(e.pointerId); } catch (x) {} clip.capY = yOf(e); e.preventDefault(); });
+    p.addEventListener('pointermove', e => { if (o.dragging) clip.capY = yOf(e); });
+    p.addEventListener('pointerup', up); p.addEventListener('pointercancel', up);
+    p.addEventListener('keydown', e => { if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' || C.captions !== 'Yes') return; e.preventDefault();
+      const cur = clip.capY != null ? clip.capY : C.capY != null ? C.capY : defAnchor(); clip.capY = Math.min(90, Math.max(10, cur + (e.key === 'ArrowUp' ? -3 : 3))); if (o.onDrop) o.onDrop(); });
+  }
+  phones.push(o); paint(o); return p;
+}
+function paint(o){
+  const ov = OV[C.overlay], s = C.ovs[C.overlay], st = o.el.style, set = (k, v) => st.setProperty(k, v);
+  o.el.querySelector('.tt').textContent = o.clip.title;
+  o.el.dataset.ov = ov; o.el.dataset.pos = String(s.pos || 'Top').toLowerCase();
+  set('--hl', C.capColor);
+  if (ov === 'banner'){ set('--ovbg', s.bg); set('--ovfg', s.fg); }
+  if (ov === 'glass'){ set('--tint', s.tint); set('--gb', s.blur === 'Strong' ? '14px' : '5px'); set('--gr', s.round === 'Round' ? '5cqw' : '1.2cqw'); }
+  if (ov === 'poster'){ set('--pc', s.color); set('--ps', {Small:'9cqw', Medium:'10.5cqw', Large:'12cqw'}[s.size]); }
+  if (ov === 'sticker'){ set('--ovbg', s.bg); set('--ovfg', ink(s.bg)); set('--tilt', {Left:'-4deg', None:'0deg', Right:'4deg'}[s.tilt]); }
+  if (ov === 'frame'){ set('--ovbg', s.color); set('--ovfg', ink(s.color)); set('--fw', s.width === 'Thick' ? '5cqw' : '2.2cqw'); }
+  o.el.querySelectorAll('.bt').forEach(b => { b.textContent = C.brand.trim(); });
+  o.el.querySelectorAll('.br').forEach(b => { b.style.visibility = C.brand.trim() ? '' : 'hidden'; });
+  o.end.querySelector('b').textContent = C.brand.trim() || 'Noxi';
+  o.end.querySelector('.ed').textContent = 'Noxi flash · ' + shortDays(C.flashDays) + ' posts';
+  const m = C.media;
+  o.ban.hidden = !m.banner; if (m.banner && o.ban.getAttribute('src') !== m.banner.url) o.ban.src = m.banner.url;
+  o.tb.classList.toggle('gone', !!m.banner);
+  o.fv.hidden = !m.flash; o.edf.hidden = !!m.flash; if (m.flash && o.fv.getAttribute('src') !== m.flash.url) o.fv.src = m.flash.url;
+  if (m.ending && o.ev.getAttribute('src') !== m.ending.url) o.ev.src = m.ending.url;
+  o.page = -1; o.seg = '';
+}
+const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
+function zoomAt(t){
+  if (C.zoom === 'Smooth') return 1 + .14 * (ease((t - 3.6) / .5) - ease((t - 5.7) / .6));
+  if (C.zoom === 'Slow creep') return 1 + .09 * Math.min(t, 7.2) / 7.2;
+  return 1;
+}
+function frame(o, t){
+  o.scene.style.transform = 'scale(' + zoomAt(t).toFixed(4) + ')';
+  const ovn = C.overlay, hold = parseFloat(C.ovs.Poster.hold);
+  o.tb.style.opacity = ovn === 'Poster' && t > hold ? 0 : 1;
+  const under = ovn === 'Poster' ? t > hold + .3 : (ovn === 'Sticker' || ovn === 'Frame');
+  o.bu.style.opacity = under && t < 7.2 && C.brand.trim() ? 1 : 0;
+  const cl = o.clip, n = cl.words.length;
+  const wi = t >= W0 && t < W0 + n * WD ? Math.floor((t - W0) / WD) : -1;
+  let pg = -1;
+  cl.pages.forEach((p, k) => { const s = W0 + p[0] * WD - .1, e = k + 1 < cl.pages.length ? W0 + cl.pages[k + 1][0] * WD - .1 : W0 + n * WD + .35; if (t >= s && t < e) pg = k; });
+  if (o.dragging && pg < 0) pg = 0;
+  if (C.captions !== 'Yes'){ if (o.page !== -2){ o.caps.replaceChildren(); o.page = -2; } }
+  else {
+    if (pg !== o.page){ o.page = pg; o.caps.replaceChildren(...(pg < 0 ? [] : cl.words.slice(cl.pages[pg][0], cl.pages[pg][1] + 1).map((w, k) => {
+      const i = cl.pages[pg][0] + k, bleep = i === cl.swear && C.language === 'Mute it';
+      return h('span', {class:'w' + (bleep ? ' bleep' : ''), 'data-i':i}, (bleep ? '****' : w) + ' '); }))); }
+    o.caps.querySelectorAll('.w').forEach(s => s.classList.toggle('on', +s.dataset.i === wi));
+  }
+  // Smart caption rule: the captions keep to their spot, and step aside while that spot would cover the face.
+  const z = zoomAt(t), anchor = cl.capY != null ? cl.capY : C.capY != null ? C.capY : defAnchor();
+  const fT = 45 - z, fB = 45 + 24 * z, hh = Math.max(3, o.caps.offsetHeight / (o.el.offsetHeight || 1) * 50);
+  const hits = anchor + hh > fT && anchor - hh < fB; let pos = anchor;
+  if (hits && !o.dragging){ const c = [fB + hh + 1.5, fT - hh - 1.5].filter(x => x >= 7 && x <= 93).sort((a, b) => Math.abs(a - anchor) - Math.abs(b - anchor)); if (c.length) pos = c[0]; }
+  o.caps.style.top = pos.toFixed(1) + '%';
+  if (o.fz){ o.fz.style.top = fT + '%'; o.fz.style.height = (fB - fT) + '%'; o.fz.classList.toggle('hit', hits); }
+  o.mute.style.opacity = wi === cl.swear && C.language === 'Mute it' ? 1 : 0;
+  const talking = wi >= 0 && !(wi === cl.swear && C.language === 'Mute it');
+  if (o.vm) o.vm.forEach((b, k) => { const lv = talking ? (.3 + .7 * Math.abs(Math.sin(t * (8 + k * 3) + k))) * cl.vol / 100 : .06; b.style.transform = 'scaleY(' + Math.min(1.4, Math.max(.06, lv)).toFixed(2) + ')'; });
+  o.mouths.forEach(m => m.setAttribute('ry', talking ? (1.2 + 2.4 * Math.abs(Math.sin(t * 17))).toFixed(2) : 1.3));
+  const segs = endSegs(), si = t >= 7.25 ? Math.floor((t - 7.25) / 1.75) : -1, sg = segs[si] || '';
+  o.end.style.opacity = sg === 'flash' ? 1 : 0; o.endv.style.opacity = sg === 'ending' ? 1 : 0;
+  if (sg !== o.seg){ o.seg = sg; const v = sg === 'flash' && C.media.flash ? o.fv : sg === 'ending' && C.media.ending ? o.ev : null;
+    [o.fv, o.ev].forEach(x => { if (x !== v) x.pause(); });
+    if (v && v.getAttribute('src')){ try { v.currentTime = 0; } catch (e) {} v.play().catch(() => {}); } }
+  o.bar.style.width = (t / loopLen() * 100).toFixed(2) + '%';
+}
+function endSegs(){ const s = []; if (S.pday !== 'other' && C.flashDays.length) s.push('flash'); if (C.media.ending) s.push('ending'); return s; }
+const loopLen = () => Math.max(LOOP, 7.25 + endSegs().length * 1.75);
+const still = matchMedia('(prefers-reduced-motion: reduce)');
+let t0 = performance.now();
+function tick(now){
+  for (let i = phones.length - 1; i >= 0; i--) if (!phones[i].el.isConnected) phones.splice(i, 1);
+  if (!phones.length){ requestAnimationFrame(tick); return; }
+  const t = still.matches ? 4.1 : ((now - t0) / 1000) % loopLen();
+  phones.forEach(o => frame(o, t));
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+const restart = () => { t0 = performance.now(); };
+
+
+/* ---------- live bits that redraw on every change ---------- */
+let live = [];
+function refresh(){ phones.forEach(paint); live.forEach(f => f()); dirty(); const hEl = document.getElementById('hint'); if (hEl) hEl.textContent = S.hint || STEPS[S.step].hint(); navState(); }
+function liveEl(build){ const box = h('div', {style:'display:contents'}); const f = () => box.replaceChildren(build()); live.push(f); f(); return box; }
+
+/* ---------- small widgets ---------- */
+function opts(key, list, descs, multi, extra){
+  const box = h('div', {class:'opts' + (extra && extra.two ? ' two' : ''), role:'group'});
+  for (const v of list){
+    const on = () => multi ? C[key].includes(v) : C[key] === v;
+    const b = h('button', {class:'opt' + (multi ? ' multi' : ''), type:'button', 'aria-pressed':String(on()), onclick:() => {
+      if (multi){ const s = new Set(C[key]); s.has(v) ? s.delete(v) : s.add(v); C[key] = list.filter(x => s.has(x)); }
+      else C[key] = v;
+      box.querySelectorAll('.opt').forEach((x, i) => x.setAttribute('aria-pressed', String(multi ? C[key].includes(list[i]) : C[key] === list[i])));
+      S.hint = descs && descs[v] ? (multi && !C[key].includes(v) ? v + ' is off.' : descs[v]) : '';
+      if (extra && extra.restart) restart();
+      refresh(); }},
+      extra && extra.mini ? h('span', {class:'mini', 'data-ov':OV[v], 'aria-hidden':'true'}, h('i'), h('u')) : null,
+      h('span', {class:'tx'}, h('b', null, v), descs && descs[v] ? h('small', null, descs[v]) : null), h('span', {class:'ck', 'aria-hidden':'true'}));
+    box.append(b);
+  }
+  return box;
+}
+function chips(key, list, multi, onSet){
+  const g = h('div', {class:'chips', role:'group'});
+  list.forEach(v => g.append(h('button', {class:'chip', type:'button', 'aria-pressed':String(multi ? C[key].includes(v) : C[key] === v), onclick:() => {
+    if (multi){ const s = new Set(C[key]); s.has(v) ? s.delete(v) : s.add(v); C[key] = list.filter(x => s.has(x)); } else C[key] = v;
+    g.querySelectorAll('.chip').forEach((x, i) => x.setAttribute('aria-pressed', String(multi ? C[key].includes(list[i]) : C[key] === list[i])));
+    S.hint = onSet ? onSet(v) : ''; refresh(); }}, multi && list === DAYS ? v.slice(0, 3) : v)));
+  return g;
+}
+function colorPick(obj, key, label, list, id){
+  const g = h('div', {class:'sw', role:'group', 'aria-label':label});
+  const mark = () => g.querySelectorAll('.swb').forEach((b, i) => b.setAttribute('aria-pressed', String(obj[key].toLowerCase() === list[i][1])));
+  const input = h('input', {type:'color', id, value:obj[key], 'aria-label':'Custom ' + label.toLowerCase(),
+    oninput:e => { obj[key] = e.target.value; mark(); S.hint = label + ' changed to your own color.'; refresh(); }});
+  list.forEach(([n, c]) => g.append(h('button', {class:'swb', type:'button', style:'background:' + c, 'aria-label':n, title:n, 'aria-pressed':String(obj[key].toLowerCase() === c),
+    onclick:() => { obj[key] = c; input.value = c; mark(); S.hint = label + ' changed to ' + n.toLowerCase() + '.'; refresh(); }})));
+  g.append(h('label', {class:'swc'}, input, 'Custom'));
+  return h('div', {class:'field'}, h('span', {class:'fl'}, label), g);
+}
+function seg(obj, key, label, list, fmt, hintFn){
+  const g = h('div', {class:'chips', role:'group', 'aria-label':label});
+  list.forEach(v => g.append(h('button', {class:'chip', type:'button', 'aria-pressed':String(obj[key] === v), onclick:() => {
+    obj[key] = v; g.querySelectorAll('.chip').forEach((b, i) => b.setAttribute('aria-pressed', String(list[i] === v)));
+    S.hint = hintFn ? hintFn(v) : label + ': ' + (fmt ? fmt(v) : v) + '.'; restart(); refresh(); }}, fmt ? fmt(v) : v)));
+  return h('div', {class:'field'}, h('span', {class:'fl'}, label), g);
+}
+const group = (label, right, ...kids) => h('div', {class:'group'}, h('div', {class:'gh'}, h('span', {class:'lab'}, label), right ? h('span', {class:'lab', style:'color:var(--iron)'}, right) : null), ...kids);
+const field = (id, label, hint, ctl) => h('div', {class:'field'}, h('label', {for:id}, label), hint ? h('p', {class:'fh'}, hint) : null, ctl);
+const text = (id, key, area, ph) => h(area ? 'textarea' : 'input', {id, type:area ? null : 'text', value:C[key], placeholder:ph || '', oninput:e => { C[key] = e.target.value; S.hint = ''; refresh(); }});
+
+
+/* ---------- demos ---------- */
+function postDemo(){
+  const desc = 'He left a safe job to start over at 30. Here is why.';
+  const tail = C.descTail.trim();
+  return h('div', {class:'panel post'}, h('span', {class:'lab'}, 'How each post reads'),
+    h('p', {class:'pt'}, 'Why I quit my job at 30'),
+    h('p', {class:'pd'}, desc, tail ? ['\n\n', h('mark', null, tail)] : null),
+    C.comment.trim() ? h('div', {class:'cm'}, h('span', {class:'av'}), h('div', null, h('p', {class:'lab', style:'text-transform:none;letter-spacing:0'}, 'First comment'), h('p', null, C.comment.trim()))) : null,
+    h('p', {class:'fine'}, 'Green line: the text you added. ' + (C.services.includes('Instagram') ? 'Buffer adds the comment on Instagram. On YouTube, you pin it yourself.' : 'On YouTube, you add and pin the comment yourself.')));
+}
+function timesDemo(){
+  const sl = goodSlots(), today = new Date(); today.setHours(12, 0, 0, 0);
+  const days = [1, 2, 3].map(n => new Date(today.getTime() + n * 864e5));
+  const pct = t => { const [H, M] = t.split(':').map(Number); return (H * 60 + M) / 1440 * 100; };
+  return h('div', {class:'panel'}, h('span', {class:'lab'}, 'A sample day · ' + tzName()),
+    h('div', {class:'track', 'aria-hidden':'true'}, [0, 6, 12, 18, 24].map(x => [h('span', {class:'tk', style:'left:' + (x / 24 * 100) + '%'}), h('span', {class:'tl', style:'left:' + Math.min(96, Math.max(4, x / 24 * 100)) + '%'}, x === 0 || x === 24 ? '12a' : x === 12 ? '12p' : x < 12 ? x + 'a' : (x - 12) + 'p')]),
+      sl.map(s => h('span', {class:'dot', style:'left:' + pct(s.time) + '%', title:fmt12(s.time)}))),
+    h('div', {class:'days'}, days.map(d => { const name = d.toLocaleDateString('en-US', {weekday:'long'}), end = C.flashDays.includes(name);
+      return h('div', {class:'dayrow'}, h('b', null, d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})),
+        h('div', {class:'sl'}, sl.length ? sl.map(s => h('span', {class:'tag'}, fmt12(s.time) + ' · ' + (s.show || 'any podcast'))) : h('span', {class:'mut small'}, 'No post times'), end ? h('span', {class:'tag end'}, 'Ends with Noxi card') : null)); })),
+    h('p', {class:'fine'}, sl.length + (sl.length === 1 ? ' clip a day. ' : ' clips a day. ') + '10 clips fill about ' + Math.ceil(10 / Math.max(1, sl.length)) + ' days.'));
+}
+function briefText(){
+  const n = C.count === 'As many as are good' ? 'every clip worth posting' : C.count + ' clips';
+  const len = C.len === 'Whatever the moment needs' ? 'Let each moment set its own length.' : 'Keep each clip ' + C.len.toLowerCase() + ' long.';
+  const kinds = C.kinds.length ? 'Look for ' + andList(C.kinds.map(k => k.toLowerCase())) + '.' : 'Look for any strong moment.';
+  const parts = C.parts === 'Split long stories into parts' ? 'Split a long story into Part 1, Part 2 and more. Post Part 1 first.' : 'Skip stories that need more time.';
+  return [['Find ', h('em', null, n), ' in each video.'], ' ', len, ' ', kinds, ' ', parts];
+}
+const clipsDemo = () => h('div', {class:'panel'}, h('span', {class:'lab'}, 'The sentence Claude works from'), h('p', {class:'brief'}, briefText()),
+  h('p', {class:'fine'}, 'You still pick the moments. Claude shows a list first, and cuts only the ones you keep.'));
+
+
+/* ---------- the five setup steps ---------- */
+const STEPS = [
+ { name:'Channels', q:'Where should your clips go?', intro:'Studio4Free hands each clip to Buffer. Buffer posts it to the channels you pick.', phone:false,
+   hint:() => C.buffer ? 'Buffer is ready. ' + (C.services.length ? 'Clips go to ' + andList(C.services) + '.' : 'Pick at least one channel.') : 'Sign in to Buffer, then pick your channels.',
+   ok:() => C.services.length ? '' : 'Pick at least one channel.',
+   demo:channelsDemo,
+   body:() => [
+     group('1 · Buffer account', C.buffer ? 'Signed in' : null, h('div', {class:'row', style:'display:flex;gap:10px;flex-wrap:wrap;align-items:center'},
+       h('button', {class:C.buffer ? 'btn ghost' : 'btn pri', type:'button', onclick:() => { C.buffer = !C.buffer; S.hint = C.buffer ? 'Buffer is signed in. Now pick the channels it posts to.' : 'Buffer is signed out.'; render(); }}, C.buffer ? 'Sign out of Buffer' : 'Sign in to Buffer'),
+       h('span', {class:'fh mut small'}, C.buffer ? 'In the real app, your Buffer name shows here.' : 'In the real app, this opens Buffer’s own sign-in page.'))),
+     group('2 · Channels', 'Pick one or more', opts('services', ['YouTube','TikTok','Instagram'], CHD, true)),
+     h('p', {class:'mut small'}, 'You can sign in to Buffer later from Setup. Clips wait in your queue until then.')] },
+ { name:'Style', q:'How should each clip look?', intro:'Tap a look. The preview redraws right away.', phone:true,
+   hint:() => OVD[C.overlay], ok:() => '',
+   body:() => {
+     const desc = h('p', {class:'fh'}), tune = h('div', {class:'tune'});
+     const fill = () => { desc.textContent = OVD[C.overlay]; const s = C.ovs[C.overlay];
+       tune.replaceChildren(h('span', {class:'lab'}, 'Adjust ' + C.overlay), ...OVSET[C.overlay].map(([k, label, kind, list, fmt]) =>
+         kind === 'color' ? colorPick(s, k, label, list, 'c-' + OV[C.overlay] + '-' + k) : seg(s, k, label, list, fmt, SETHINT[k]))); };
+     const sel = h('select', {id:'f-ov', onchange:e => { C.overlay = e.target.value; S.hint = OVD[C.overlay]; restart(); fill(); refresh(); }},
+       Object.keys(OV).map(k => h('option', {value:k, selected:k === C.overlay ? true : null}, k === 'Poster' ? 'Poster (your current look)' : k)));
+     fill();
+     return [ group('Overlay', '5 looks', field('f-ov', 'Pick a look', null, sel), desc, tune),
+       group('Captions', null, opts('captions', ['Yes','No'], CAPD, false), colorPick(C, 'capColor', 'Highlight color', SW.slice(1), 'c-cap'),
+         h('div', {class:'note'}, h('b', {style:'font-weight:500;color:var(--ink)'}, 'Smart captions are always on. '),
+           'Each word shows right as it is said. Lines break at natural pauses. Captions step aside on their own so they never cover a face.')) ]; } },
+ { name:'Motion', q:'How should the picture move?', intro:'Watch the speaker in the preview as you tap.', phone:true,
+   hint:() => ZD[C.zoom] + ' ' + LD[C.language], ok:() => '',
+   body:() => [ group('Zoom', null, opts('zoom', ['Smooth','Slow creep','None'], ZD, false, {restart:true})),
+     group('Strong language', null, opts('language', ['Mute it','Leave it in'], LD, false, {restart:true})),
+     h('p', {class:'mut small'}, 'The preview line has one swear word. Watch the captions around the 4-second mark.') ] },
+ { name:'Brand', q:'How should people find you?', intro:'Your brand shows on each clip and in each post.', phone:true,
+   hint:() => (C.brand.trim() ? '“' + C.brand.trim() + '” sits beside your mark on every clip. ' : 'No brand text shows on the clips. ') + (C.flashDays.length ? 'Clips on ' + shortDays(C.flashDays) + ' end with the Noxi card.' : 'No clip ends with the Noxi card.'),
+   ok:() => '',
+   body:() => [ group('On the clip', null,
+       field('f-brand', 'Brand text', 'It sits beside your mark. Leave it empty for none.', text('f-brand', 'brand', false, 'appnoxi.com')),
+       h('div', {class:'field'}, h('span', {class:'fl'}, 'Noxi card days'), h('p', {class:'fh'}, 'Clips that post on these days end with a 2-second Noxi card.'),
+         chips('flashDays', DAYS, true, () => { restart(); return ''; })),
+       seg(S, 'pday', 'Preview a clip that posts on', ['flash','other'], v => v === 'flash' ? 'A Noxi card day' : 'Another day',
+         v => v === 'flash' ? 'The preview now shows a Noxi card day.' : 'The preview now shows a day without the Noxi card.')),
+     group('Your own files', 'Optional',
+       upload('banner', 'Banner image', 'It replaces the title area on every clip. Best at 1080 × 360 pixels.', 'image/png,image/jpeg,image/webp', /^image\//, 'Your banner now replaces the title area on every clip.'),
+       upload('flash', 'Flash clip', 'It plays on Noxi card days in place of the default card. Keep it near 2 seconds.', 'video/*', /^video\//, 'Your flash clip now plays on Noxi card days.'),
+       upload('ending', 'Ending video', 'It plays at the end of every clip, after any flash. Keep it under 3 seconds.', 'video/*', /^video\//, 'Your ending video now plays at the end of every clip.'),
+       h('p', {class:'fine'}, 'Your files are saved with your studio. Each file can be up to 20 MB.')),
+     group('In the post', null,
+       field('f-tail', 'Line added to every description', 'For example, a link to your app.', text('f-tail', 'descTail', true)),
+       field('f-com', 'First comment on each post', null, text('f-com', 'comment', true))),
+     liveEl(postDemo),
+     h('p', {class:'fine'}, 'Example text is filled in. Change it to yours.') ] },
+ { name:'Times', q:'When should clips post?', intro:'Each post time gets one clip a day. A time can belong to one podcast.', phone:false,
+   hint:() => { const s = goodSlots(); return s.length ? 'Clips post at ' + andList(s.map(x => fmt12(x.time))) + ', ' + tzName() + '.' : 'Add at least one post time.'; },
+   ok:() => goodSlots().length ? '' : 'Add at least one post time.',
+   demo:timesDemo,
+   body:() => [ group('Time zone', null, h('select', {id:'f-tz', 'aria-label':'Time zone', onchange:e => { C.tz = e.target.value; S.hint = ''; refresh(); }},
+       TZS.map(z => h('option', {value:z[0], selected:z[0] === C.tz ? true : null}, z[1])))),
+     group('Post times', C.slots.length + ' a day',
+       C.slots.map((s, i) => h('div', {class:'slotrow'},
+         h('input', {type:'time', id:'f-t' + i, 'aria-label':'Post time ' + (i + 1), value:s.time, onchange:e => { s.time = e.target.value; S.hint = ''; refresh(); }}),
+         h('input', {type:'text', id:'f-s' + i, 'aria-label':'Podcast for post time ' + (i + 1), placeholder:'Any podcast', value:s.show, oninput:e => { s.show = e.target.value.trim(); refresh(); }}),
+         h('button', {class:'x', type:'button', 'aria-label':'Remove ' + fmt12(s.time || '00:00'), onclick:() => { C.slots.splice(i, 1); S.hint = ''; render(); }}, '×'))),
+       h('div', null, h('button', {class:'btn ghost sm', type:'button', disabled:C.slots.length >= 6 ? true : null, onclick:() => {
+         let H = 9; while (C.slots.some(x => x.time === String(H).padStart(2, '0') + ':00') && H < 22) H++;
+         C.slots.push({time:String(H).padStart(2, '0') + ':00', show:''}); S.hint = 'Added ' + fmt12(String(H).padStart(2, '0') + ':00') + '. Change it to the time you want.'; render(); }}, '+ Add a post time'))),
+     h('p', {class:'mut small'}, 'Leave the podcast empty to let any clip take that time.') ] }
+];
+// The clip choices open every new job, so they live on the New clips screen, not in setup.
+const CLIPSTEP = { name:'Clips', q:'What should Claude look for?', intro:'These answers tell Claude which moments to cut from each video.', phone:false,
+   hint:() => 'Each new job starts from these answers. You can change them per job.',
+   ok:() => C.kinds.length ? '' : 'Pick at least one kind of moment.',
+   demo:clipsDemo,
+   body:() => [ group('How many clips?', null, chips('count', COUNTS, false)),
+     group('How long is each clip?', null, chips('len', LENS, false)),
+     group('Long stories', null, opts('parts', ['Split long stories into parts','Short clips only'], {'Split long stories into parts':'A long story becomes Part 1, Part 2 and more.','Short clips only':'Claude skips stories that need more time.'}, false)),
+     group('Good moments', 'Pick any', chips('kinds', KINDS, true)) ] };
+const SUM = [
+  () => (C.buffer ? 'Buffer' : 'Buffer not signed in') + ' · ' + (andList(C.services) || 'no channels'),
+  () => { const s = C.ovs[C.overlay], d = {Poster:s.size + ' title, ' + s.hold + ' s', Banner:s.pos + ' bar', 'Glass card':s.blur + ' blur, ' + s.round + ' corners',
+      Sticker:s.tilt === 'None' ? 'no tilt' : 'tilted ' + s.tilt, Frame:s.width + ' edges'}[C.overlay];
+    return C.overlay + ' (' + String(d).toLowerCase() + ') · captions ' + (C.captions === 'Yes' ? 'on' : 'off'); },
+  () => C.zoom + ' zoom · swear words ' + (C.language === 'Mute it' ? 'muted' : 'left in'),
+  () => { const own = [C.media.banner && 'own banner', C.media.flash && 'own flash clip', C.media.ending && 'ending video'].filter(Boolean);
+    return (C.brand.trim() || 'No brand text') + ' · Noxi card on ' + (C.flashDays.length ? shortDays(C.flashDays) : 'no days') + (own.length ? ' · ' + andList(own) : ''); },
+  () => andList(goodSlots().map(x => fmt12(x.time))) + ' · ' + tzName()
+];
+
+
+
+/* ---------- the real pieces behind the setup steps ---------- */
+// A file the owner adds is stored with the page, so every device and every Claude Code session can reach it.
+function upload(kind, label, hint, accept, okType, onHint){
+  const id = 'u-' + kind, box = h('div', {class:'field'}), err = h('p', {class:'err', role:'status'});
+  const draw = () => { const f = C.media[kind];
+    box.replaceChildren(h('span', {class:'fl'}, label), h('p', {class:'fh'}, hint),
+      h('div', {class:'up'},
+        h('label', {class:'btn ghost sm', for:id}, f ? 'Replace file' : 'Upload file'),
+        h('input', {type:'file', id, accept, class:'vh', onchange:async e => { const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+          if (!okType.test(file.type)){ err.textContent = 'That file type does not work here. ' + (kind === 'banner' ? 'Use a PNG or JPG image.' : 'Use an MP4 or MOV video.'); return; }
+          if (file.size > 20 * 1048576){ err.textContent = 'That file is ' + Math.round(file.size / 1048576) + ' MB. The limit is 20 MB.'; return; }
+          err.textContent = 'Uploading ' + file.name + '…';
+          try { let rec; if (assets){ const r = await assets.upload(file); rec = {id:r.id, url:'/_blob/' + r.id, name:file.name}; } else rec = {url:URL.createObjectURL(file), name:file.name, temp:true};
+            const old = C.media[kind]; C.media[kind] = rec; if (old && old.id && assets) assets.delete(old.id).catch(() => {});
+            err.textContent = assets ? '' : 'This view cannot store files. The file stays in this tab only.'; S.hint = onHint; restart(); draw(); refresh(); }
+          catch (x) { err.textContent = 'The upload did not go through. Try again.'; } }}),
+        h('span', {class:'fname'}, f ? f.name : 'No file yet'),
+        f ? h('button', {class:'btn ghost sm', type:'button', onclick:() => { if (f.id && assets) assets.delete(f.id).catch(() => {}); C.media[kind] = null; S.hint = label + ' removed.'; restart(); draw(); refresh(); }}, 'Remove') : null),
+      err); };
+  draw(); return box;
+}
+function channelsDemo(){
+  return h('div', {class:'panel'}, h('span', {class:'lab'}, 'How your clips travel'),
+    h('div', {class:'flow'},
+      h('div', {class:'node on'}, h('span', null, 'Studio4Free'), h('span', {class:'st'}, 'Cuts the clips')),
+      h('div', {class:'arrow'}, '↓ sends each clip with its post time'),
+      h('div', {class:'node on'}, h('span', null, 'Buffer'), h('span', {class:'st'}, C.buffer ? 'Login: ' + C.buffer : 'Default login')),
+      h('div', {class:'arrow'}, '↓ posts at that time'),
+      h('div', {class:'chan'}, ['YouTube','TikTok','Instagram'].map(s => { const on = C.services.includes(s);
+        return h('div', {class:'node ' + (on ? 'on' : 'off')}, h('span', null, s), h('span', {class:'st'}, on ? 'On' : 'Off')); }))));
+}
+// Buffer cannot be signed in to from this page. The owner names the saved Buffer login and each channel instead.
+Object.assign(STEPS[0], {
+  hint:() => C.services.length ? 'Clips go to ' + andList(C.services) + ' through Buffer.' : 'Pick at least one channel.',
+  body:() => [
+    group('1 · Buffer account', C.buffer ? 'Named' : 'Default',
+      field('f-buffer', 'Buffer login', 'The name of the saved Buffer login this studio posts with, such as main. It is only a name. Never put a key or a password here.',
+        h('input', {type:'text', id:'f-buffer', maxlength:24, autocapitalize:'none', autocomplete:'off', spellcheck:'false', value:C.buffer, placeholder:'Leave empty for the default login',
+          oninput:e => { const v = e.target.value.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); e.target.value = v; C.buffer = v; S.hint = ''; refresh(); }}))),
+    group('2 · Channels', 'Pick one or more', opts('services', ['YouTube','TikTok','Instagram'], CHD, true),
+      liveEl(() => h('div', {style:'display:flex;flex-direction:column;gap:12px'}, ['YouTube','TikTok','Instagram'].filter(o => C.services.includes(o)).map(o => { const k = o.toLowerCase(), id = 'f-ch-' + k;
+        return field(id, o + ' channel name in Buffer', 'Type the name the way Buffer shows it.', h('input', {type:'text', id, maxlength:80, value:C.channels[k] || '', onchange:e => { C.channels[k] = e.target.value.trim(); dirty(); }})); })))),
+    h('p', {class:'mut small'}, 'Claude Code hands each clip to Buffer. Clips wait in your queue until then.')] });
+SUM[0] = () => 'Buffer ' + (C.buffer ? 'login ' + C.buffer : 'default login') + ' · ' + (andList(C.services) || 'no channels');
+
+/* ---------- small pieces for the working screens ---------- */
+const fld = (label, hint, ctl, id) => h('div', {class:'field'}, id ? h('label', {for:id}, label) : h('span', {class:'fl'}, label), hint ? h('p', {class:'fh'}, hint) : null, ctl);
+function pickChips(list, cur, multi, onPick){
+  const g = h('div', {class:'chips', role:'group'});
+  list.forEach(o => g.append(h('button', {class:'chip', type:'button', 'aria-pressed':String(multi ? (cur || []).includes(o) : cur === o), onclick:e => { const b = e.currentTarget, now = b.getAttribute('aria-pressed') !== 'true';
+    if (!multi) for (const x of g.children) x.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-pressed', String(now)); onPick(o, now); }}, o)));
+  return g;
+}
+const pagehead = (lab, title, sub) => h('div', {class:'pagehead'}, h('span', {class:'lab'}, lab), h('h2', null, title), sub ? h('p', null, sub) : null);
+const pillFor = st => { const t = String(st || '').toLowerCase(); return /publish|posted|sent/.test(t) ? 'ok' : /schedul/.test(t) ? 'info' : /draft|plan/.test(t) ? 'wait' : /refus|fail|block/.test(t) ? 'bad' : ''; };
+const hasVid = c => /^[0-9a-f]{32}$/.test((c && c.asset) || '');
+const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting){ const v = e.target; if (!v.getAttribute('src')) v.src = v.dataset.src; io.unobserve(v); } }, {rootMargin:'300px'}) : null;
+function lazyVid(asset, controls, cls){ const v = h('video', {class:cls || null, controls:controls || null, playsinline:true, muted:controls ? null : true, preload:'metadata', 'data-src':'/_blob/' + asset + '#t=0.1'}); if (!controls) v.muted = true; if (io) io.observe(v); else v.src = v.dataset.src; return v; }
+function allClips(){ const out = []; for (const [id, j] of S.jobs) for (const c of (j.clips || [])) if (c.publishAt) out.push({id, j, c}); return out.sort((a, b) => new Date(a.c.publishAt) - new Date(b.c.publishAt)); }
+const slots = () => goodSlots().map(x => ({time:x.time, show:String(x.show || '').trim()}));
+const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+// A job's clips go into the post times of its own podcast. With no match, they use the times that have no podcast.
+function slotTimes(show){ const all = slots(); let m = String(show || '').trim() ? all.filter(x => same(x.show, show)) : []; if (!m.length) m = all.filter(x => !x.show); if (!m.length) m = all; return [...new Set(m.map(x => x.time))]; }
+const shows = () => [...new Set([...slots().map(x => x.show), ...[...S.jobs.values()].map(j => String(j.show || '').trim())].filter(Boolean))];
+function qState(c){ const t = String(c.status || '').toLowerCase(); return /publish|posted/.test(t) ? ['Posted', 'ok'] : /schedul/.test(t) ? ['Scheduled', 'info'] : /draft/.test(t) ? ['Draft in Buffer', 'wait'] : ['Not in Buffer yet', '']; }
+function liveLinks(c){
+  const out = [], seen = new Set(), add = (name, url) => { if (url && /^https:\/\//.test(url) && !seen.has(url)){ seen.add(url); out.push([name, url]); } };
+  for (const k in (c.live || {})) add(k === 'youtube' ? 'YouTube' : k[0].toUpperCase() + k.slice(1), String(c.live[k] || ''));
+  const m = /((?:www\.)?youtube\.com\/shorts\/[\w-]+)/.exec(String(c.status || '')); if (m) add('YouTube', 'https://' + m[1].replace(/^(?!www\.)/, 'www.'));
+  return out;
+}
+const when12 = iso => dayShort(iso) + ' ' + fmt12(hm(iso));
+
+/* ---------- screens ---------- */
+const app = document.getElementById('app'), nav = document.getElementById('nav'), bk = document.getElementById('bk'), nx = document.getElementById('nx'), why = document.getElementById('why');
+const tabs = document.getElementById('tabs'), badge = document.getElementById('badge');
+const TABS = [['recap','Studio','studio'],['jobs','Jobs','jobs'],['queue','Queue','queue'],['schedule','Schedule','schedule'],['setup','Setup','setup']];
+function go(screen, arg){
+  S.screen = screen; if (screen === 'step' && arg != null) S.step = arg; if (screen === 'job') S.id = arg; S.hint = ''; S.err = '';
+  const t = TABS.find(x => x[0] === screen); try { if (t) location.hash = t[2]; else if (screen === 'job') location.hash = 'job-' + arg; } catch (e) {}
+  render(); scrollTo(0, 0);
+}
+function render(){
+  live = []; dirty();
+  if (S.screen !== 'admin' && admStop){ admStop(); admStop = null; admRows = null; admErr = ''; }
+  const wait = S.store === 'wait' || S.busy, inApp = !wait && !!S.key && !['signin','admin','step'].includes(S.screen);
+  badge.hidden = wait || !S.key || S.screen === 'signin'; badge.textContent = S.acct ? S.acct.name || 'My studio' : '';
+  tabs.hidden = !inApp || S.screen === 'start' || S.screen === 'edit';
+  const cur = S.screen === 'job' ? 'jobs' : S.screen;
+  tabs.replaceChildren(...TABS.map(t => h('button', {type:'button', class:t[0] === cur ? 'now' : 'done', 'aria-current':t[0] === cur ? 'page' : null, onclick:() => go(t[0])}, h('i'), h('span', null, t[1]))));
+  nav.hidden = wait || !['step','recap','start'].includes(S.screen);
+  if (wait){ app.replaceChildren(...[S.note ? h('p', {class:'note', style:'margin-top:18px'}, S.note) : null, h('p', {class:'mut', style:'padding-top:28px'}, 'Loading your studio…')].filter(Boolean)); return; }
+  const top = [S.note ? h('p', {class:'note', style:'margin-top:18px'}, S.note) : null,
+    S.store === 'local' ? h('p', {class:'note', style:'margin-top:18px'}, 'This view saves on this device only. Open the page inside Claude to keep your work everywhere.') : null];
+  const v = ({signin:vSignin, admin:vAdmin, step:vStep, recap:vRecap, start:vStart, edit:vEdit, jobs:vJobs, job:vJob, queue:vQueue, schedule:vSchedule, setup:vSetup}[S.screen] || vRecap)();
+  app.replaceChildren(...top.filter(Boolean), ...v.flat(3).filter(Boolean));
+  navState();
+}
+function navState(){
+  bk.hidden = false;
+  if (S.screen === 'step'){
+    const st = STEPS[S.step], bad = st.ok();
+    bk.textContent = S.step ? 'Back' : S.back ? 'Recap' : 'Sign out'; bk.onclick = () => S.step ? go('step', S.step - 1) : S.back ? (S.back = false, go('recap')) : signOut('', true);
+    nx.textContent = S.back ? 'Back to recap' : S.step === STEPS.length - 1 ? 'See my recap' : 'Next: ' + STEPS[S.step + 1].name;
+    nx.disabled = !!bad; why.textContent = bad;
+    nx.onclick = () => { if (bad) return; if (S.back || S.step === STEPS.length - 1){ S.back = false; if (!S.acct.setupDone) saveAcct({setupDone:true}); go('recap'); } else go('step', S.step + 1); };
+  } else if (S.screen === 'recap'){
+    bk.hidden = S.welcome; bk.textContent = 'Back'; bk.onclick = () => go('step', STEPS.length - 1); why.textContent = '';
+    nx.disabled = false; nx.textContent = S.welcome ? 'Make new clips' : 'Start my first job'; nx.onclick = () => go('start');
+  } else if (S.screen === 'start'){
+    bk.textContent = 'Recap'; bk.onclick = () => go('recap'); why.textContent = '';
+    nx.disabled = false; nx.textContent = 'Send to Claude Code'; nx.onclick = sendJob;
+  }
+}
+
+function vSignin(){
+  const G = S.gate, msg = h('p', {class:'err', role:'status', id:'f-gate-msg'}, G.msg || '');
+  const done = () => { S.gate.msg = ''; if (S.acct.setupDone){ S.welcome = true; route(); } else { S.welcome = false; S.back = false; go('step', 0); } scrollTo(0, 0); };
+  const signIn = async () => { if (G.wait) return; const k = normKey(G.key);
+    if (!k){ msg.textContent = 'That is not a studio number. A studio number looks like S4F-ABCD-EFGH.'; return; }
+    G.wait = true; msg.textContent = 'Opening your studio…'; const r = await openAcct(k); G.wait = false;
+    if (r){ msg.textContent = r !== 'none' ? r : db ? 'No studio has that number. Check it, or tap "Get my number".' : NOLOCAL; return; }
+    localSet('s4f.key', G.remember ? k : ''); done(); };
+  const make = async (b, name, legacy) => { if (G.wait) return; G.wait = true; b.disabled = true; let r; try { r = await makeAcct(name, legacy, G.remember); } finally { G.wait = false; } if (r) G.msg = r; render(); };
+  const pathHave = h('div', {class:'path'}, h('span', {class:'lab'}, 'Path A'), h('h3', null, 'I have a studio number'),
+    h('p', {class:'mut small'}, 'Type the number you saved when you started.'),
+    h('input', {type:'text', id:'f-num', autocomplete:'off', autocapitalize:'characters', spellcheck:'false', placeholder:'S4F-ABCD-EFGH', value:G.key || '', 'aria-label':'Studio number', 'aria-describedby':'f-gate-msg',
+      oninput:e => { G.key = e.target.value; }, onkeydown:e => { if (e.key === 'Enter') signIn(); }}),
+    h('button', {class:'btn pri wide', type:'button', id:'f-signin', onclick:signIn}, 'Sign in'), msg,
+    pickChips(['Remember on this device'], G.remember ? ['Remember on this device'] : [], true, (o, on) => { G.remember = on; }));
+  let newBox;
+  if (G.mode === 'show' && S.key){
+    const num = h('p', {class:'num', id:'acct-key', style:'font-size:clamp(22px,6.6vw,34px)'}, G.newKey || S.key);
+    newBox = h('div', {class:'path', style:'border-color:var(--ink)'}, h('span', {class:'lab'}, S.acct.legacy ? 'Your studio · your number' : 'Path B · your number'), num,
+      h('p', {class:'small'}, 'Save this number. You sign in with it on any phone or computer. There is no password.'),
+      h('div', {style:'display:flex;gap:10px;align-items:center;flex-wrap:wrap'}, copyBtn(G.newKey || S.key, num, 'f-key-copy')),
+      S.acct.setupDone ? null : h('div', {class:'note'}, 'Next come five short steps: Channels, Style, Motion, Brand and Times. Each step shows what it changes. It takes about two minutes.'),
+      h('button', {class:'btn pri wide', type:'button', id:'f-key-saved', onclick:() => { G.mode = 'in'; done(); }}, S.acct.setupDone ? 'I saved it, open my studio' : 'Start step 1 of 5'));
+  } else newBox = h('div', {class:'path'}, h('span', {class:'lab'}, 'Path B'), h('h3', null, 'I’m new'),
+    h('p', {class:'mut small'}, 'Get a studio number. Then set up your studio in five short steps.'),
+    h('button', {class:'btn wide', type:'button', id:'f-new', onclick:e => make(e.currentTarget, 'My studio', false)}, 'Get my number'));
+  const n = oldJobs();
+  const old = offerOld() && G.mode !== 'show' ? h('div', {class:'path', style:'border-color:var(--ink);margin-top:26px'}, h('span', {class:'lab'}, 'Your existing studio'),
+    h('p', null, (n ? n + (n === 1 ? ' job is' : ' jobs are') + ' waiting in your existing studio.' : 'Your existing studio has saved settings.') + ' Give it a studio number to open it. Nothing in it changes.'),
+    h('button', {class:'btn pri wide', type:'button', id:'f-old-move', onclick:e => make(e.currentTarget, 'My studio', true)}, 'Get the number for my existing studio')) : null;
+  return [h('section', {class:'hero'}, h('span', {class:'lab'}, 'Automate your channels, hands free'), h('h1', null, 'One video in.', h('br'), 'A week of clips out.'),
+      h('p', null, 'Paste a YouTube link. Claude finds the best moments, cuts the clips and fills your posting schedule.')),
+    old, h('div', {class:'paths'}, pathHave, newBox),
+    owner ? h('div', {style:'padding-top:26px'}, h('button', {class:'btn ghost sm', type:'button', id:'f-admin', onclick:() => go('admin')}, 'Admin: see all studio numbers')) : null];
+}
+
+// The admin view lists every studio and its number. Only the owner of this page, signed in to Claude, can open it.
+// One watch on the accounts runs while the admin view is open. render() stops it on every other screen.
+let admStop = null, admRows = null, admErr = '';
+function vAdmin(){
+  if (owner && !admStop){
+    if (db) admStop = db.collection('accounts').onSnapshot(snap => { admRows = snap.docs.map(d => [d.id, d.data()]); admErr = ''; if (S.screen === 'admin') render(); },
+      () => { admErr = 'The studios could not be loaded. Check your connection and open this view again.'; if (S.screen === 'admin') render(); });
+    else { admStop = () => {}; admRows = Object.entries(localGet('s4f.accounts', {})); } }
+  const rows = (admRows || []).slice().sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
+  const box = h('div', {class:'rec'}, !owner ? h('p', {class:'note'}, 'Only the owner of this page can open the admin view.')
+    : admErr ? h('p', {class:'note'}, admErr) : !admRows ? h('p', {class:'mut', style:'padding-block:14px'}, 'Loading the studios…')
+    : !rows.length ? h('p', {class:'mut', style:'padding-block:14px'}, 'No studio exists yet.')
+    : rows.map(([key, a]) => { const jobs = [...ALL.values()].filter(j => mine(j, key, a.legacy)).length, code = h('span', {class:'code'}, key), msg = h('span', {class:'fine', role:'status'});
+      return h('div', {class:'acctrow'}, h('div', {style:'display:flex;flex-direction:column;gap:5px;min-width:0'}, h('b', {style:'font-weight:500'}, String(a.name || 'Unnamed studio')), code,
+          h('span', {class:'fine'}, (a.createdAt ? 'Made ' + new Date(a.createdAt).toLocaleDateString() + ' · ' : '') + jobs + (jobs === 1 ? ' job' : ' jobs') + (a.legacy ? ' · first studio' : '') + (a.setupDone ? '' : ' · setup not finished')), msg),
+        h('div', {style:'display:flex;flex-direction:column;gap:6px'}, copyBtn(key, code, null, 'Copy'),
+          h('button', {class:'btn sm', type:'button', onclick:async e => { e.currentTarget.disabled = true; const r = await openAcct(key); if (r){ msg.textContent = r === 'none' ? 'That studio is gone.' : r; return; } S.welcome = true; S.gate.mode = 'in'; go('recap'); }}, 'Open'))); }));
+  return [pagehead('Admin', 'Every studio number.', 'Each number opens one studio. Share a number only with the person who runs that studio. This list shows only for the owner of this page.'),
+    h('div', {class:'stack'}, box, h('div', null, h('button', {class:'btn ghost', type:'button', onclick:() => S.key ? go('setup') : go('signin')}, S.key ? 'Back to Setup' : 'Back to sign-in')))];
+}
+
+function vStep(){
+  const st = STEPS[S.step];
+  const bar = h('nav', {class:'steps', 'aria-label':'Setup steps'}, STEPS.map((x, i) =>
+    h('button', {type:'button', class:i < S.step ? 'done' : i === S.step ? 'now' : '', 'aria-current':i === S.step ? 'step' : null, disabled:i > S.step ? true : null,
+      onclick:() => { if (i < S.step) go('step', i); }}, h('i'), h('span', null, (i < S.step ? '✓ ' : '') + x.name))));
+  const hint = h('p', {class:'hint', id:'hint', 'aria-live':'polite'}, S.hint || st.hint());
+  const stage = st.phone
+    ? h('aside', {class:'stage sticky'}, makePhone(), h('div', {class:'side'}, h('span', {class:'lab'}, 'What this changes'), hint, h('p', {class:'fine'}, 'Drawn preview. It is not your real footage.')))
+    : h('aside', {class:'stage', style:'flex-direction:column;align-items:stretch'}, liveEl(st.demo), h('div', {class:'side'}, h('span', {class:'lab'}, 'What this changes'), hint));
+  const content = h('div', {class:'content'}, h('div', {class:'head'}, h('span', {class:'lab'}, 'Step ' + (S.step + 1) + ' of ' + STEPS.length + ' · ' + st.name), h('h2', null, st.q), h('p', null, st.intro)), st.body());
+  return [bar, h('div', {class:'main'}, stage, content)];
+}
+
+
+
+/* ---------- the studio home ---------- */
+function clipRows(){
+  const now = Date.now(), all = []; for (const [id, j] of S.jobs) for (const c of (j.clips || [])) all.push({id, j, c});
+  const t = x => x.c.publishAt ? new Date(x.c.publishAt).getTime() : 0;
+  const up = all.filter(x => t(x) >= now).sort((a, b) => t(a) - t(b)), rest = all.filter(x => t(x) < now).sort((a, b) => t(b) - t(a));
+  return up.concat(rest);
+}
+function realPhone(c, cls){ return h('div', {class:'phone' + (cls ? ' ' + cls : '')}, hasVid(c) ? lazyVid(c.asset, false, 'real') : h('div', {class:'ph0'}, String(c.onScreen || c.title || 'Clip ' + c.n))); }
+function clipTag(c){ const st = qState(c); if (c.redo) return ['Changes sent · v' + (c.ver || 2), ' sent'];
+  return [st[0] === 'Posted' ? 'Posted' + (c.publishAt ? ' · ' + dayShort(c.publishAt) : '') : c.publishAt ? when12(c.publishAt) : st[0], st[0] === 'Posted' ? ' sent' : '']; }
+function vRecap(){
+  const rows = clipRows(), real = rows.length > 0;
+  const cards = real ? rows.slice(0, 12).map((x, i) => { const tg = clipTag(x.c);
+      return h('button', {class:'cc', type:'button', role:'listitem', 'aria-label':'Open clip: ' + (x.c.title || 'clip ' + x.c.n), onclick:e => { if (carousel.dataset.moved === '1'){ e.preventDefault(); return; } openEditor(x); }},
+        realPhone(x.c), h('span', {class:'tag' + tg[1]}, tg[0]), h('b', null, String(x.c.title || 'Clip ' + x.c.n))); })
+    : CLIPS.map((c, i) => h('div', {class:'cc', role:'listitem'}, makePhone(false, c), h('span', {class:'tag'}, 'Example ' + (i + 1)), h('b', null, c.title)));
+  const carousel = h('div', {class:'car', role:'list', 'aria-label':'Your clips'}, cards);
+  carousel.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; carDrag = {el:carousel, sx:e.clientX, sl:carousel.scrollLeft}; carousel.dataset.moved = '0'; });
+  const step = d => carousel.scrollBy({left:d * (carousel.firstElementChild.offsetWidth + 12), behavior:'smooth'});
+  const stage = h('div', {class:'group'}, h('div', {class:'carhead'}, h('span', {class:'lab'}, real ? 'Your clips · drag or tap one to open' : 'Example clips · yours show here after your first job'),
+      h('div', {class:'arrows'}, h('button', {class:'btn ghost sm', type:'button', 'aria-label':'Earlier clips', onclick:() => step(-1)}, '←'), h('button', {class:'btn ghost sm', type:'button', 'aria-label':'Later clips', onclick:() => step(1)}, '→'))),
+    carousel, real && rows.length > 12 ? h('div', null, h('button', {class:'btn ghost sm', type:'button', onclick:() => go('queue')}, 'See all ' + rows.length + ' clips in the queue')) : null);
+  return vRecapRest(stage);
+}
+function recRows(){ return h('div', {class:'rec'}, STEPS.map((st, i) => h('div', {class:'recrow'}, h('span', {class:'lab'}, st.name), h('span', {class:'v'}, SUM[i]()),
+    h('button', {class:'btn ghost sm', type:'button', 'aria-label':'Edit ' + st.name, onclick:() => { S.back = true; go('step', i); }}, 'Edit')))); }
+function vRecapRest(stage){
+  return [h('div', {class:'main', style:'grid-template-columns:minmax(0,1fr)'}, h('div', {class:'content', style:'max-width:760px'},
+    h('div', {class:'head'}, h('span', {class:'lab'}, S.welcome ? 'Signed in' : 'Recap · all five steps done'), h('h2', null, S.welcome ? 'Welcome back.' : 'Here is your studio.'),
+      h('p', null, 'Every new job starts from these answers. Tap Edit to change one. You can also change them later in Setup.')),
+    stage, recRows(), presetPanel(() => render()),
+    h('div', {class:'group'}, h('span', {class:'lab'}, 'What happens after you start a job'),
+      h('div', {class:'pipe'}, h('div', null, 'You paste a YouTube link.'), h('div', null, 'Claude finds the best moments and lists them.'),
+        h('div', null, 'You keep or skip each moment.'), h('div', null, 'Claude cuts the clips and checks the platform rules.'), h('div', null, 'Buffer posts each clip at its time.')))))];
+}
+// Mouse users drag the clip row sideways. Touch users swipe it natively.
+let carDrag = null;
+addEventListener('pointermove', e => { const d = carDrag; if (!d) return; const dx = e.clientX - d.sx;
+  if (Math.abs(dx) > 6){ d.el.dataset.moved = '1'; d.el.classList.add('drag'); } if (d.el.dataset.moved === '1') d.el.scrollLeft = d.sl - dx; });
+addEventListener('pointerup', () => { const d = carDrag; if (!d) return; carDrag = null; d.el.classList.remove('drag'); setTimeout(() => { d.el.dataset.moved = '0'; }, 0); });
+
+// One clip, opened: the real video, the caption spot, the volume, and notes for Claude.
+function openEditor(x){
+  const cl = x.c, j = x.j, id = x.id, total = (j.clips || []).length;
+  const spotText = c => c.capY == null ? (S.set.capY == null ? 'Default spot, low on the screen' : 'Your spot for all clips') : (c.capY < 40 ? 'Near the top' : c.capY < 62 ? 'In the middle' : 'Near the bottom') + ' · ' + Math.round(c.capY) + '% down';
+  const volOf = () => cl.vol == null ? 100 : cl.vol, volText = v => v === 0 ? 'Clip volume · muted' : 'Clip volume · ' + v + '%';
+  const note = h('p', {class:'hint', 'aria-live':'polite'}, 'Drag up or down on the clip to mark where its captions should sit.');
+  const spot = h('span', {class:'small'}, spotText(cl));
+  const vid = hasVid(cl) ? h('video', {class:'real', playsinline:true, loop:true, preload:'metadata', src:'/_blob/' + cl.asset + '#t=0.1'}) : null;
+  const mark = h('div', {class:'caps capmark', 'aria-hidden':'true'}, 'Captions');
+  const big = h('div', {class:'phone big edit', tabindex:'0', role:'group', 'aria-label':'Clip. Drag up or down to mark the caption spot. Arrow keys work too.'}, vid || h('div', {class:'ph0'}, String(cl.title || 'Clip ' + cl.n)), mark);
+  const place = () => { mark.style.top = (cl.capY != null ? cl.capY : S.set.capY != null ? S.set.capY : 78) + '%'; spot.textContent = spotText(cl); };
+  const drop = () => { const a = cl.capY; note.textContent = a > 41 && a < 72 ? 'That spot is where a face often sits. Claude keeps the captions off the face.' : 'Marked. Save to keep this spot.'; };
+  const yOf = e => { const r = big.getBoundingClientRect(); return Math.min(90, Math.max(10, (e.clientY - r.top) / r.height * 100)); };
+  let drag = false; const up = () => { if (!drag) return; drag = false; big.classList.remove('dragging'); drop(); };
+  big.addEventListener('pointerdown', e => { drag = true; big.classList.add('dragging'); try { big.setPointerCapture(e.pointerId); } catch (err) {} cl.capY = yOf(e); place(); e.preventDefault(); });
+  big.addEventListener('pointermove', e => { if (drag){ cl.capY = yOf(e); place(); } });
+  big.addEventListener('pointerup', up); big.addEventListener('pointercancel', up);
+  big.addEventListener('keydown', e => { if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return; e.preventDefault();
+    const cur = cl.capY != null ? cl.capY : S.set.capY != null ? S.set.capY : 78; cl.capY = Math.min(90, Math.max(10, cur + (e.key === 'ArrowUp' ? -3 : 3))); place(); drop(); });
+  place();
+  const play = vid ? h('button', {class:'btn ghost sm', type:'button', onclick:e => { if (vid.paused){ vid.volume = Math.min(1, volOf() / 100); vid.play().catch(() => {}); e.currentTarget.textContent = 'Pause'; } else { vid.pause(); e.currentTarget.textContent = 'Play'; } }}, 'Play') : null;
+  const vl = h('label', {class:'lab', for:'f-vol'}, volText(volOf()));
+  const vol = h('input', {type:'range', id:'f-vol', min:0, max:150, step:5, value:volOf(), oninput:e => { cl.vol = +e.target.value; vl.textContent = volText(cl.vol); if (vid) vid.volume = Math.min(1, cl.vol / 100);
+    note.textContent = cl.vol > 100 ? 'This clip will play louder than the source video.' : cl.vol === 0 ? 'This clip will play with no sound.' : 'This clip will play at ' + cl.vol + '% of the source volume.'; }});
+  const ctl = h('div', {class:'ctl'}, h('span', {class:'lab'}, 'Caption spot'), spot,
+    h('div', {style:'display:flex;gap:8px;flex-wrap:wrap'},
+      h('button', {class:'btn ghost sm', type:'button', onclick:() => { if (cl.capY == null){ note.textContent = 'Drag the caption mark first. Then you can use that spot for all clips.'; return; }
+        S.set.capY = Math.round(cl.capY); dirty(); note.textContent = 'New clips now use this caption spot.'; }}, 'Use for all clips'),
+      h('button', {class:'btn ghost sm', type:'button', onclick:() => { cl.capY = null; place(); note.textContent = 'This clip uses the shared caption spot again.'; }}, 'Reset')),
+    vl, vol, h('p', {class:'fine'}, vid ? 'Press Play to hear the clip. The volume changes when Claude cuts the next version.' : 'This clip has no video on the page yet.'));
+  const notes = h('textarea', {id:'f-notes', value:cl.notes || '', placeholder:'For example: start one second later, or use a shorter title.', oninput:e => { cl.notes = e.target.value; }});
+  const sent = h('p', {class:'small', role:'status'}, cl.redo ? 'Version ' + (cl.ver || 2) + ' was asked for. It replaces the earlier version.' : '');
+  const st = qState(cl);
+  const close = () => { if (vid) vid.pause(); ov.remove(); document.body.style.overflow = ''; removeEventListener('keydown', esc); render(); };
+  const esc = e => { if (e.key === 'Escape') close(); };
+  const xb = h('button', {class:'btn ghost sm', type:'button', onclick:close}, 'Close');
+  const ov = h('div', {class:'ov', role:'dialog', 'aria-modal':'true', 'aria-label':'Edit clip ' + cl.n, onclick:e => { if (e.target === ov) close(); }},
+    h('div', {class:'ovin'},
+      h('div', {class:'ovhead'}, h('div', {style:'display:flex;flex-direction:column;gap:6px;min-width:0'}, h('span', {class:'lab'}, 'Clip ' + cl.n + ' of ' + total + ' · version ' + (cl.ver || 1) + ' · ' + (j.name || 'job')), h('h3', null, String(cl.title || 'Clip ' + cl.n))), xb),
+      h('div', {style:'display:flex;flex-direction:column;gap:10px;min-width:0'}, big, play ? h('div', null, play) : null, note),
+      h('div', {style:'display:flex;flex-direction:column;gap:14px;min-width:0'},
+        h('div', {class:'row'}, h('span', {class:'pill ' + st[1]}, st[0]), cl.publishAt ? h('span', {class:'pill'}, when12(cl.publishAt)) : null, rulesPill(cl),
+          liveLinks(cl).map(l => h('a', {class:'btn ghost sm', href:l[1], target:'_blank', rel:'noopener'}, 'Open on ' + l[0]))),
+        ctl,
+        h('div', {class:'field'}, h('label', {for:'f-notes'}, 'Notes for Claude'), h('p', {class:'fh'}, 'Say what else to change. Claude reads this with your edits.'), notes),
+        h('p', {class:'note'}, 'Claude always replaces this clip. It never makes a second copy.'),
+        h('div', {style:'display:flex;gap:10px;flex-wrap:wrap'},
+          h('button', {class:'btn ghost', type:'button', onclick:async () => { await saveJob(id, {clips:j.clips}); sent.textContent = 'Saved. Nothing was sent yet.'; }}, 'Save'),
+          h('button', {class:'btn pri', type:'button', style:'flex:1 1 200px', disabled:st[0] === 'Posted' ? true : null, onclick:async e => { const b = e.currentTarget; b.disabled = true; cl.ver = (cl.ver || 1) + 1; cl.redo = {at:Date.now(), from:(cl.redo && cl.redo.from) || j.status || 'review'};
+            const r = await tell(b, 'Studio4Free: change clip ' + cl.n + ' of job "' + (j.name || 'untitled') + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.');
+            await saveJob(id, {clips:j.clips, status:'cutting'}); b.disabled = false;
+            sent.textContent = (r === 'sent' ? 'Sent. ' : 'Saved. No Claude Code session is listening, so say "run the studio jobs" there. ') + 'Claude will replace clip ' + cl.n + ' with version ' + cl.ver + '.'; }}, 'Save and send for changes')),
+        sent, st[0] === 'Posted' ? h('p', {class:'fine'}, 'This clip is already posted. Claude cannot change a posted clip.') : null,
+        h('div', null, h('button', {class:'btn ghost sm', type:'button', onclick:() => { close(); S.open.add(id + '-' + cl.n); go('job', id); }}, 'Open the whole job')))));
+  document.body.append(ov); document.body.style.overflow = 'hidden'; addEventListener('keydown', esc); xb.focus();
+}
+
+/* ---------- saved setups: named sets of clip, style and ad choices (never caption spots) ---------- */
+const PARTS = {
+  clips:{name:'Clips', keys:['count','len','parts','kinds']},
+  style:{name:'Style', keys:['overlay','ovs','captions','capColor','zoom','language']},
+  ad:{name:'Ad', keys:['brand','descTail','comment','flashDays','media']} };
+const clone = v => v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v;
+let PRESETS = [];
+const keepPresets = () => { S.set.presets = PRESETS; dirty(); };
+function snapshot(parts){ const d = {}; parts.forEach(pt => PARTS[pt].keys.forEach(k => { d[k] = k === 'media' ? Object.assign({}, C.media) : clone(C[k]); })); return d; }
+function applyPreset(pr){ for (const k in pr.data) C[k] = k === 'media' ? Object.assign({}, pr.data.media) : clone(pr.data[k]); restart(); }
+const partList = pr => andList(pr.parts.map(x => PARTS[x].name.toLowerCase()));
+function presetPanel(onApply){
+  const msg = h('p', {class:'small', role:'status'});
+  const sel = h('select', {id:'f-preset', 'aria-label':'Saved setup', onchange:e => { const pr = PRESETS.find(x => x.name === e.target.value); if (!pr) return;
+      applyPreset(pr); S.preset = pr.name; msg.textContent = 'Applied ' + pr.name + '. Its ' + partList(pr) + ' choices are in place.'; if (onApply) onApply(); }},
+    h('option', {value:''}, PRESETS.length ? 'Pick a saved setup' : 'No saved setups yet'),
+    PRESETS.map(pr => h('option', {value:pr.name, selected:S.preset === pr.name ? true : null}, pr.name + ' · ' + partList(pr))));
+  const name = h('input', {type:'text', id:'f-pname', placeholder:'Name it, such as Morning Show', value:S.preset || ''});
+  const pick = new Set(['clips','style','ad']);
+  const tog = h('div', {class:'chips', role:'group', 'aria-label':'What to save'}, Object.keys(PARTS).map(pt => h('button', {class:'chip', type:'button', 'aria-pressed':'true',
+    onclick:e => { pick.has(pt) ? pick.delete(pt) : pick.add(pt); e.currentTarget.setAttribute('aria-pressed', String(pick.has(pt))); }}, PARTS[pt].name)));
+  const save = h('button', {class:'btn pri sm', type:'button', onclick:() => {
+    const n = name.value.trim(); if (!n){ msg.textContent = 'Type a name for this setup first.'; return; }
+    if (!pick.size){ msg.textContent = 'Pick at least one part to save.'; return; }
+    const parts = Object.keys(PARTS).filter(x => pick.has(x)), old = PRESETS.findIndex(x => x.name.toLowerCase() === n.toLowerCase()), pr = {name:n, parts, data:snapshot(parts)};
+    if (old >= 0) PRESETS[old] = pr; else PRESETS.push(pr); keepPresets(); S.preset = n;
+    S.presetMsg = (old >= 0 ? 'Updated ' : 'Saved ') + n + '. It holds your ' + partList(pr) + ' choices.'; render(); }}, 'Save setup');
+  const del = S.preset && PRESETS.some(x => x.name === S.preset) ? h('button', {class:'btn ghost sm', type:'button', onclick:() => {
+    PRESETS = PRESETS.filter(x => x.name !== S.preset); keepPresets(); S.presetMsg = 'Deleted ' + S.preset + '.'; S.preset = ''; render(); }}, 'Delete ' + S.preset) : null;
+  if (S.presetMsg){ msg.textContent = S.presetMsg; S.presetMsg = ''; }
+  return h('div', {class:'group'}, h('div', {class:'gh'}, h('span', {class:'lab'}, 'Saved setups'), h('span', {class:'lab', style:'color:var(--iron)'}, PRESETS.length + ' saved')),
+    field('f-preset', 'Use a saved setup', 'It sets your clip, style or ad choices in one tap.', sel),
+    h('div', {class:'tune'}, h('span', {class:'lab'}, 'Save what you have now'), field('f-pname', 'Setup name', null, name),
+      h('div', {class:'field'}, h('span', {class:'fl'}, 'What to save'), tog), h('div', {style:'display:flex;gap:8px;flex-wrap:wrap'}, save, del),
+      h('p', {class:'fine'}, 'Caption spots are not saved. Smart captions place them on their own.')),
+    msg);
+}
+
+
+/* ---------- new clips ---------- */
+function vStart(){
+  const msg = h('p', {class:'err', id:'startmsg', role:'status'});
+  const keep = () => { const g = id => (document.getElementById(id) || {}).value || ''; S.link = g('f-link'); S.job = g('f-job'); S.show = g('f-show'); S.want = g('f-want'); };
+  return [h('div', {class:'main'}, h('aside', {class:'stage', style:'flex-direction:column;align-items:stretch;gap:14px'}, liveEl(clipsDemo), makePhone(true),
+      liveEl(() => h('p', {class:'fine'}, 'Style: ' + SUM[1]() + '. Ad: ' + SUM[3]() + '.'))),
+    h('div', {class:'content'}, h('div', {class:'head'}, h('span', {class:'lab'}, S.jobs.size ? 'New clips' : 'First job'), h('h2', null, CLIPSTEP.q),
+        h('p', null, 'Start with what Claude should look for. Then paste the video. You check the moments before anything gets cut.')),
+      presetPanel(() => { keep(); render(); }), CLIPSTEP.body(),
+      h('div', {class:'group'}, h('span', {class:'lab'}, 'The video'),
+        field('f-link', 'YouTube link', 'It starts with https://youtu.be/ or https://www.youtube.com/.', h('input', {type:'url', id:'f-link', inputmode:'url', placeholder:'https://youtu.be/…', value:S.link || '', oninput:keep})),
+        field('f-job', 'Job name', 'A short name, such as the guest.', h('input', {type:'text', id:'f-job', placeholder:'Episode 42 with Sam', value:S.job || '', oninput:keep})),
+        field('f-show', 'Podcast', 'The show this video comes from. Its clips fill the post times of that show.', h('div', {class:'field'}, h('input', {type:'text', id:'f-show', value:S.show || '', oninput:keep}),
+          shows().length ? pickChips(shows(), S.show, false, (o, on) => { S.show = on ? o : ''; document.getElementById('f-show').value = S.show; }) : null)),
+        field('f-want', 'Moments you already want', 'Optional. Timestamps help.', h('textarea', {id:'f-want', value:S.want || '', oninput:keep})), msg)))];
+}
+async function sendJob(){
+  const g = id => ((document.getElementById(id) || {}).value || '').trim(), v = g('f-link'), msg = document.getElementById('startmsg');
+  const bad = CLIPSTEP.ok(); if (bad){ msg.style.color = 'var(--warn)'; msg.textContent = bad; return; }
+  if (!/^https:\/\/((www\.|m\.)?youtube\.com\/(watch\?|shorts\/|live\/)|youtu\.be\/)\S+$/i.test(v)){ msg.style.color = 'var(--warn)'; msg.textContent = 'Paste a full YouTube link first.'; return; }
+  nx.disabled = true; const s = S.set, look = ovName();
+  const doc = {kind:'clips', name:g('f-job') || 'Untitled', show:g('f-show'), link:v, status:'sent', statusNote:'', shortlist:[], clips:[],
+    ask:{count:s.count, len:s.len, parts:s.parts, kinds:s.kinds, want:g('f-want')},
+    look:{overlay:look, ovs:clone(s.ovs[look]), capColor:s.capColor, capY:s.capY == null ? null : s.capY, media:clone(s.media), fit:s.fit, zoom:s.zoom, captions:s.captions, language:s.language, brand:s.brand, descTail:s.descTail}};
+  const id = await addJob(doc); if (!id){ nx.disabled = false; msg.style.color = 'var(--warn)'; msg.textContent = 'The job could not be saved. Check your connection.'; return; }
+  const r = await tell(nx, 'Studio4Free: run the new clipping job "' + doc.name + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.');
+  S.jobs.get(id).sentNote = told(r); S.link = S.job = S.show = S.want = ''; go('job', id);
+}
+function vEdit(){
+  const f = S.form || (S.form = {link:'', name:'', what:'', estyle:'', edits:['Add captions'], target:''}), msg = h('p', {class:'err', role:'status'});
+  const inp = (id, k, area, ph) => h(area ? 'textarea' : 'input', {id, type:area ? null : 'text', value:f[k] || '', placeholder:ph || '', oninput:e => { f[k] = e.target.value; }});
+  return [pagehead('New edit job', 'What should the edit do?', 'Give one video and say what to change. Claude shows you the plan before it renders.'),
+    h('div', {class:'stack', style:'max-width:760px'},
+      group('The video', null, field('f-elink', 'YouTube link', 'It starts with https://youtu.be/ or https://www.youtube.com/.', inp('f-elink', 'link', false, 'https://youtu.be/…')), field('f-ename', 'Job name', null, inp('f-ename', 'name'))),
+      group('The edit', null, field('f-ewhat', 'What should the edit do?', 'Say it the way you would tell a friend.', inp('f-ewhat', 'what', true)),
+        fld('Editing style', null, pickChips(ESTYLES, f.estyle, false, (o, on) => { f.estyle = on ? o : ''; })),
+        fld('The edit should also', null, pickChips(EDITS, f.edits, true, (o, on) => { const s = new Set(f.edits); on ? s.add(o) : s.delete(o); f.edits = [...s]; })),
+        field('f-etarget', 'Length of the finished video', 'Optional.', inp('f-etarget', 'target'))),
+      msg, h('div', {class:'row'}, h('button', {class:'btn ghost', type:'button', onclick:() => { S.form = null; go('jobs'); }}, 'Back'),
+        h('button', {class:'btn pri grow', type:'button', onclick:async e => { const b = e.currentTarget, v = (f.link || '').trim();
+          if (!/^https:\/\/((www\.|m\.)?youtube\.com\/(watch\?|shorts\/|live\/)|youtu\.be\/)\S+$/i.test(v)){ msg.textContent = 'Paste a full YouTube link first.'; return; }
+          b.disabled = true; const s = S.set, doc = {kind:'edit', name:(f.name || '').trim() || 'Untitled', show:'', link:v, status:'sent', statusNote:'', shortlist:[], clips:[],
+            ask:{what:f.what || '', style:f.estyle, edits:f.edits, target:f.target || ''}, look:{overlay:ovName(), zoom:s.zoom, captions:s.captions, language:s.language, brand:s.brand, descTail:s.descTail}};
+          const id = await addJob(doc); if (!id){ b.disabled = false; msg.textContent = 'The job could not be saved. Check your connection.'; return; }
+          const r = await tell(b, 'Studio4Free: run the new edit job "' + doc.name + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.');
+          S.jobs.get(id).sentNote = told(r); S.form = null; go('job', id); }}, 'Send to Claude Code')))];
+}
+
+/* ---------- jobs ---------- */
+function vJobs(){
+  const list = [...S.jobs].sort((a, b) => (b[1].updatedAt || 0) - (a[1].updatedAt || 0));
+  return [pagehead('Jobs', 'Every video you sent.', 'One job is one video. Open a job to keep or skip its moments and to check its clips.'),
+    h('div', {class:'stack'}, h('div', {class:'row'}, h('button', {class:'btn pri grow', type:'button', onclick:() => go('start')}, 'Make new clips'), h('button', {class:'btn grow', type:'button', onclick:() => { S.form = null; go('edit'); }}, 'New edit job')),
+      list.length ? h('div', {class:'sect'}, list.map(([id, j]) => { const st = STATUS[j.status] || [j.status || 'Draft', '']; const n = (j.clips || []).length, sl = (j.shortlist || []).length;
+        return h('button', {class:'card', type:'button', onclick:() => go('job', id)}, h('div', {class:'row'}, h('span', {class:'pill'}, j.kind === 'edit' ? 'Edit' : 'Clips'), h('span', {class:'pill ' + st[1]}, st[0])),
+          h('h3', null, j.name || 'Untitled'), h('p', {class:'mut small'}, (j.show ? j.show + ' · ' : '') + (n ? n + (n === 1 ? ' clip' : ' clips') : sl ? sl + ' moments found' : 'No clips yet') + ' · edited ' + new Date(j.updatedAt || j.createdAt || Date.now()).toLocaleDateString())); }))
+      : h('div', {class:'empty'}, h('b', null, 'No jobs yet. '), 'Tap "Make new clips" and paste a YouTube link. The job appears here with its status and its clips.'))];
+}
+function vJob(){
+  const id = S.id, j = S.jobs.get(id); if (!j) return [pagehead('Job', 'This job is not here.', 'It may have been deleted.')];
+  const st = STATUS[j.status] || [j.status || 'Draft', ''], out = [];
+  const act = (label, status, text, pri) => h('button', {class:'btn wide' + (pri ? ' pri' : ''), type:'button', onclick:async e => { const b = e.currentTarget; b.disabled = true; const r = await tell(b, text); await saveJob(id, {status}); j.sentNote = told(r); render(); }}, label);
+  out.push(h('div', {class:'pagehead'}, h('div', {class:'row'}, h('button', {class:'btn ghost sm', type:'button', onclick:() => go('jobs')}, '← Jobs'), h('span', {class:'pill'}, j.kind === 'edit' ? 'Edit' : 'Clips'), h('span', {class:'pill ' + st[1]}, st[0])),
+    h('h2', null, j.name || 'Untitled'), h('p', {style:'overflow-wrap:anywhere'}, j.link ? h('a', {href:j.link, target:'_blank', rel:'noopener'}, j.link) : 'No link')));
+  const body = h('div', {class:'stack', style:'max-width:760px'}); out.push(body);
+  body.append(...[fld('Podcast', 'Clips from this job fill the post times of this show: ' + slotTimes(j.show).map(fmt12).join(', ') + '.', h('input', {type:'text', id:'f-jshow', value:j.show || '', onchange:e => { saveJob(id, {show:e.target.value.trim()}).then(render); }}), 'f-jshow'),
+    j.statusNote ? h('p', {class:'note'}, String(j.statusNote)) : null, j.sentNote ? h('p', {class:'note', role:'status'}, j.sentNote) : null,
+    j.status === 'sent' ? act('Send to Claude Code again', 'sent', 'Studio4Free: run the job "' + j.name + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.') : null].filter(Boolean));
+  const sl = j.shortlist || [], clips = (j.clips || []).slice().sort((a, b) => (a.publishAt ? new Date(a.publishAt) : 9e15) - (b.publishAt ? new Date(b.publishAt) : 9e15) || a.n - b.n);
+  if (sl.length && !clips.length){ const kept = () => sl.filter(x => x.keep !== false).length; const cnt = h('span', null, kept());
+    body.append(h('div', {class:'group'}, h('div', {class:'gh'}, h('span', {class:'lab'}, 'Moments found'), h('span', {class:'lab', style:'color:var(--iron)'}, sl.length + ' found')),
+      h('p', {class:'mut small'}, 'Switch off the moments you do not want. Then cut the rest. The parts of one story switch together.'),
+      h('div', null, sl.map(x => h('div', {class:'pick'}, h('div', null, x.parts > 1 ? h('span', {class:'pill info', style:'margin-right:8px'}, 'Part ' + x.part + ' of ' + x.parts) : null, h('b', null, String(x.title || 'Moment ' + x.n)), x.line ? h('p', {class:'small'}, '"' + x.line + '"') : null, x.why ? h('p', {class:'small mut'}, String(x.why)) : null),
+        h('button', {class:'chip', type:'button', 'aria-pressed':String(x.keep !== false), onclick:e => { x.keep = x.keep === false; if (x.series){ for (const y of sl) if (y.series === x.series) y.keep = x.keep; saveJob(id, {shortlist:sl}); render(); return; } e.currentTarget.setAttribute('aria-pressed', String(x.keep)); e.currentTarget.textContent = x.keep ? 'Keep' : 'Skip'; cnt.textContent = kept(); saveJob(id, {shortlist:sl}); }}, x.keep !== false ? 'Keep' : 'Skip'),
+        h('span', {class:'tcode'}, tcode(x.start) + ' → ' + tcode(x.end) + ' · ' + Math.round(x.end - x.start) + 's')))),
+      j.status === 'shortlist' ? h('button', {class:'btn pri wide', type:'button', onclick:async e => { const b = e.currentTarget; b.disabled = true; const r = await tell(b, 'Studio4Free: cut the kept moments for job "' + j.name + '" (job id ' + id + '). Follow CLAUDE.md in the studio4free repository.'); await saveJob(id, {status:'cutting', shortlist:sl}); j.sentNote = told(r); render(); }}, 'Cut the kept moments (', cnt, ')') : null)); }
+  if (clips.length){
+    const open = clips.filter(c => !c.publishAt).length, held = clips.filter(c => c.check && c.check.level === 'risk' && !c.check.override).length;
+    body.append(h('div', {class:'group'}, h('div', {class:'gh'}, h('span', {class:'lab'}, 'Clips'), h('span', {class:'lab', style:'color:var(--iron)'}, clips.length + (clips.length === 1 ? ' clip' : ' clips'))),
+      open ? h('button', {class:'btn wide', type:'button', onclick:() => { fillSlots(j); saveJob(id, {clips:j.clips}); render(); }}, 'Fill the next open times (' + open + (open === 1 ? ' clip)' : ' clips)')) : null,
+      h('div', {class:'sect'}, clips.map(c => clipCard(id, j, c))),
+      partIssues(clips).map(t => h('p', {class:'note'}, t)),
+      flashIssues(clips).length ? h('p', {class:'note'}, flashIssues(clips).join(' ')) : null,
+      flashIssues(clips).length ? act('Fix the Noxi card on these clips', 'cutting', 'Studio4Free: cut the clips of job "' + j.name + '" (job id ' + id + ') again where the Noxi flash does not match the post day. Follow CLAUDE.md in the studio4free repository.') : null,
+      held ? h('p', {class:'note'}, held + (held === 1 ? ' clip has' : ' clips have') + ' a rules risk. Claude Code will not schedule ' + (held === 1 ? 'it' : 'them') + ' unless you choose "Post anyway".') : null,
+      act('Check these clips against the platform rules', 'checking', 'Studio4Free: check the clips of job "' + j.name + '" (job id ' + id + ') against the platform rules. Follow CLAUDE.md in the studio4free repository.'),
+      j.status === 'review' ? act('Schedule these in Buffer', 'scheduling', 'Studio4Free: schedule the clips of job "' + j.name + '" (job id ' + id + ') in Buffer. Follow CLAUDE.md in the studio4free repository.', true) : null)); }
+  if (!sl.length && !clips.length) body.append(h('div', {class:'empty'}, h('b', null, 'Nothing to show yet. '), j.kind === 'edit' ? 'The edited video appears here when Claude Code finishes it.' : 'The moments Claude Code finds appear here. You pick the ones to cut.'));
+  let sure = false; body.append(h('div', null, h('button', {class:'btn sm warn', type:'button', onclick:e => { if (sure) dropJob(id); else { sure = true; e.currentTarget.textContent = 'Delete this job for good?'; } }}, 'Delete job')));
+  return out;
+}
+// A job can hold a dozen clips, so each clip starts as a short row. A tap opens its editor.
+function clipCard(id, j, c){
+  const k = id + '-' + c.n; if (S.open.has(k)) return clipFull(id, j, c);
+  const note = c.check && c.check.level !== 'clear' && (c.check.notes || [])[0];
+  return h('button', {class:'card cliprow', type:'button', 'aria-label':'Open clip ' + c.n, onclick:() => { S.open.add(k); render(); }},
+    h('div', {class:'row'}, h('span', {class:'pill'}, 'Clip ' + c.n), c.parts > 1 ? h('span', {class:'pill info'}, 'Part ' + c.part + ' of ' + c.parts) : null, c.flash ? h('span', {class:'pill hot'}, 'Noxi card') : null, rulesPill(c), c.redo ? h('span', {class:'pill ok'}, 'Changes sent · v' + (c.ver || 2)) : null),
+    h('h3', null, String(c.title || 'Clip ' + c.n)),
+    h('p', {class:'small mut'}, (c.publishAt ? when12(c.publishAt) + ' · ' + wall(c.publishAt).slice(5, 10).replace('-', '/') : 'No post time') + (c.seconds ? ' · ' + Math.round(c.seconds) + 's' : '') + ' · tap to open'),
+    note ? h('p', {class:'small', style:'overflow-wrap:anywhere'}, String(note)) : null);
+}
+function clipFull(id, j, c){
+  const save = () => saveJob(id, {clips:j.clips}); const k = id + '-' + c.n;
+  const vid = hasVid(c) ? lazyVid(c.asset, true) : h('div', {class:'ph'}, 'Clip ' + c.n, h('br'), c.seconds ? Math.round(c.seconds) + 's' : '');
+  const dl = downloads && hasVid(c) ? h('button', {class:'btn ghost sm', type:'button', onclick:async e => { const b = e.currentTarget; b.disabled = true; b.textContent = 'Preparing…';
+    try { const blob = await (await fetch('/_blob/' + c.asset)).blob(); await downloads.save({filename:(j.name || 'clip').replace(/[^\w -]+/g, '').trim().replace(/\s+/g, '-') + '-' + c.n + '.mp4', data:blob}); b.textContent = 'Saved'; } catch (err) { b.textContent = 'Download'; } b.disabled = false; }}, 'Download') : null;
+  return h('div', {class:'card'}, h('div', {class:'row'}, h('button', {class:'btn ghost sm', type:'button', onclick:() => { S.open.delete(k); render(); }}, 'Close clip ' + c.n),
+      h('button', {class:'btn ghost sm', type:'button', onclick:() => openEditor({id, j, c})}, 'Caption spot, volume, notes')),
+    h('div', {class:'clip'}, vid, h('div', {class:'side'},
+      h('div', {class:'row'}, h('span', {class:'pill'}, 'Clip ' + c.n), c.parts > 1 ? h('span', {class:'pill info'}, 'Part ' + c.part + ' of ' + c.parts) : null, c.flash ? h('span', {class:'pill hot'}, 'Noxi card') : null, rulesPill(c), h('span', {class:'pill ' + qState(c)[1]}, qState(c)[0])),
+      c.status ? h('p', {class:'small mut', style:'overflow-wrap:anywhere'}, String(c.status)) : null,
+      fld('Publish time', null, h('input', {type:'datetime-local', id:'f-at-' + k, value:c.publishAt ? wall(c.publishAt) : '', onchange:e => { c.publishAt = e.target.value ? wallToISO(e.target.value) : ''; save(); }}), 'f-at-' + k), dl)),
+    rulesBox(c, save),
+    fld('Title', null, h('input', {type:'text', id:'f-t-' + k, value:c.title || '', onchange:e => { c.title = e.target.value; save(); }}), 'f-t-' + k),
+    fld('Description', null, h('textarea', {id:'f-d-' + k, value:c.description || '', onchange:e => { c.description = e.target.value; save(); }}), 'f-d-' + k));
+}
+function rulesPill(c){ const k = c.check && c.check.level; return h('span', {class:'pill ' + ({clear:'ok', look:'wait', risk:'bad'}[k] || '')}, k === 'clear' ? 'Rules: clear' : k === 'look' ? 'Rules: look' : k === 'risk' ? 'Rules: risk' : 'Rules: not checked'); }
+function rulesBox(c, save){
+  const ck = c.check; if (!ck || !((ck.notes || []).length || ck.level === 'risk')) return null;
+  const src = (ck.sources || []).filter(s => /^https:\/\//.test(s.url || ''));
+  return h('div', {class:'note rules'}, h('b', {style:'font-weight:500;color:var(--ink)'}, 'Rules check' + (ck.at ? ', ' + new Date(ck.at).toLocaleDateString() : '')),
+    (ck.notes || []).length ? h('ul', null, ck.notes.map(n => h('li', null, String(n)))) : null,
+    src.length ? h('p', {class:'small mut'}, 'Read: ', src.flatMap((s, i) => [i ? ', ' : '', h('a', {href:s.url, target:'_blank', rel:'noopener'}, String(s.title || s.url))])) : null,
+    ck.level === 'risk' ? h('div', {class:'row', style:'margin-top:8px'}, h('button', {class:'chip', type:'button', 'aria-pressed':String(!!ck.override), onclick:e => { ck.override = !ck.override; e.currentTarget.setAttribute('aria-pressed', String(ck.override)); save(); }}, 'Post anyway')) : null);
+}
+function flashIssues(clips){
+  const days = S.set.flashDays || [], out = [];
+  if (!(S.acct && S.acct.legacy)) return out;   // the Noxi card belongs to the first studio only
+  for (const c of clips){ if (!c.publishAt || /publish/i.test(c.status || '')) continue; const want = days.includes(weekday(c.publishAt));
+    if (want && !c.flash) out.push('Clip ' + c.n + ' posts on a ' + weekday(c.publishAt) + ' and has no Noxi card yet.');
+    if (!want && c.flash) out.push('Clip ' + c.n + ' has the Noxi card, and it posts on a ' + weekday(c.publishAt) + '.'); }
+  return out;
+}
+function partIssues(clips){
+  const out = [], by = {}; for (const c of clips) if (c.series && c.parts > 1) (by[c.series] || (by[c.series] = [])).push(c);
+  for (const s in by){ const ps = by[s].slice().sort((a, b) => a.part - b.part);
+    for (let i = 1; i < ps.length; i++){ const a = ps[i - 1], b = ps[i]; if (b.publishAt && (!a.publishAt || new Date(a.publishAt) >= new Date(b.publishAt))) out.push('Part ' + b.part + ' of "' + (b.title || s) + '" posts before part ' + a.part + '. Give part ' + a.part + ' the earlier time.'); } }
+  return out;
+}
+function fillSlots(j){
+  const taken = new Set(allClips().map(x => wall(x.c.publishAt))), times = slotTimes(j.show).sort();
+  if (!times.length) return;   // with no post times the search below would never end
+  let day = new Date(todayKey() + 'T12:00:00Z'); const next = () => { for (;;){ day = new Date(day.getTime() + 864e5); const key = day.toISOString().slice(0, 10); for (const t of times){ const w = key + 'T' + t; if (!taken.has(w)){ taken.add(w); day = new Date(day.getTime() - 864e5); return w; } } } };
+  for (const c of (j.clips || []).slice().sort((a, b) => a.n - b.n)) if (!c.publishAt) c.publishAt = wallToISO(next());
+}
+
+/* ---------- the queue and the schedule ---------- */
+function qRow(x){
+  const c = x.c, j = x.j, st = qState(c), posted = st[0] === 'Posted', ids = c.bufferIds || {};
+  const where = (S.set.services || []).map(svc => { const k = svc.toLowerCase(), on = !!ids[k] || (posted && new RegExp(svc, 'i').test(c.status || '')) || !!(c.live || {})[k];
+    return h('span', {class:'pill ' + (on ? (posted ? 'ok' : 'info') : '')}, svc + (on ? '' : ' · not yet')); });
+  return h('div', {class:'slot'}, h('span', {class:'t'}, c.publishAt ? fmt12(hm(c.publishAt)).replace(' ', ' ') : '--:--'),
+    h('div', {class:'b'}, h('b', null, String(c.title || 'Clip ' + c.n) + (c.parts > 1 ? ' · Part ' + c.part + ' of ' + c.parts : '')),
+      h('span', {class:'from'}, 'From ' + (j.show || 'an unnamed show') + (j.name ? ' · ' + j.name : ''), j.link ? [' · ', h('a', {href:j.link, target:'_blank', rel:'noopener'}, 'source video')] : null),
+      h('div', {class:'row'}, h('span', {class:'pill ' + st[1]}, st[0]), st[0] === 'Not in Buffer yet' ? null : where),
+      h('div', {class:'row'}, h('button', {class:'btn ghost sm', type:'button', onclick:() => openEditor(x)}, hasVid(c) ? 'Watch and edit' : 'Edit'),
+        liveLinks(c).map(l => h('a', {class:'btn ghost sm', href:l[1], target:'_blank', rel:'noopener'}, 'Open on ' + l[0])))));
+}
+function vQueue(){
+  const rows = []; for (const [id, j] of S.jobs) for (const c of (j.clips || [])) rows.push({id, j, c});
+  const when = x => x.c.publishAt ? new Date(x.c.publishAt).getTime() : 9e15;
+  const posted = rows.filter(x => qState(x.c)[0] === 'Posted').sort((a, b) => when(b) - when(a));
+  const next = rows.filter(x => qState(x.c)[0] !== 'Posted').sort((a, b) => when(a) - when(b));
+  const waiting = next.filter(x => qState(x.c)[0] === 'Not in Buffer yet').length, list = S.q === 'posted' ? posted : next;
+  const seg = h('div', {class:'chips', role:'group', 'aria-label':'Which clips to show'}, [['next', 'Up next · ' + next.length], ['posted', 'Posted · ' + posted.length]].map(o =>
+    h('button', {class:'chip', type:'button', 'aria-pressed':String(S.q === o[0]), onclick:() => { S.q = o[0]; render(); }}, o[1])));
+  const days = []; let cur = null;
+  for (const x of list){ const k = x.c.publishAt ? dayKey(x.c.publishAt) : ''; if (!cur || cur.k !== k){ cur = {k, items:[]}; days.push(cur); } cur.items.push(x); }
+  return [pagehead('Queue', 'What posts, and where it is from.', 'Every clip that is posted or waiting to post, with its show. Times are in ' + tzName() + '.'),
+    h('div', {class:'stack', style:'max-width:760px;gap:8px'}, seg,
+      S.q !== 'posted' && waiting ? h('p', {class:'note', style:'margin-top:10px'}, waiting + (waiting === 1 ? ' clip has' : ' clips have') + ' a post time and ' + (waiting === 1 ? 'is' : 'are') + ' not in Buffer yet. ' + (waiting === 1 ? 'It' : 'They') + ' will not post until a Claude Code session schedules ' + (waiting === 1 ? 'it' : 'them') + '.') : null,
+      list.length ? days.map(d => h('div', {class:'day'}, h('h3', null, d.k ? dayName(d.k) + (d.k === todayKey() ? ' · today' : '') : 'No post time yet'), d.items.map(qRow)))
+        : h('div', {class:'empty', style:'margin-top:14px'}, h('b', null, S.q === 'posted' ? 'Nothing is posted yet. ' : 'Nothing is waiting. '), S.q === 'posted' ? 'A clip moves here when Buffer publishes it.' : 'Clips appear here when a job gives them a post time.'))];
+}
+function coverage(){
+  const all = allClips(), today = todayKey();
+  return h('div', {class:'panel'}, h('span', {class:'lab'}, 'Post times · ' + slots().length + ' a day'), h('div', null, slots().map(sl => {
+    const mine2 = all.filter(x => hm(x.c.publishAt) === sl.time && dayKey(x.c.publishAt) >= today && !/publish/i.test(x.c.status || ''));
+    const days = new Set(mine2.map(x => dayKey(x.c.publishAt))); let d = new Date(today + 'T12:00:00Z'), last = '';
+    while (days.has(d.toISOString().slice(0, 10))){ last = d.toISOString().slice(0, 10); d = new Date(d.getTime() + 864e5); }
+    const drafts = mine2.filter(x => qState(x.c)[0] !== 'Scheduled').length;
+    return h('div', {class:'pick'}, h('div', null, h('b', null, fmt12(sl.time) + ' · ' + (sl.show || 'Any podcast')),
+        h('p', {class:'small mut'}, !mine2.length ? 'No clips waiting.' : (last ? 'Filled every day through ' + dayName(last) + '.' : 'Nothing for today. ' + mine2.length + ' clips wait on later days.') + (drafts ? ' ' + drafts + ' of ' + mine2.length + ' are not scheduled in Buffer yet.' : ''))),
+      h('span', {class:'pill ' + (!mine2.length ? 'bad' : drafts ? 'wait' : 'ok')}, mine2.length + (mine2.length === 1 ? ' clip' : ' clips'))); })));
+}
+function vSchedule(){
+  const all = allClips(), today = todayKey(), byDay = new Map();
+  for (const x of all){ const k = dayKey(x.c.publishAt); if (!S.showPast && k < today) continue; (byDay.get(k) || byDay.set(k, []).get(k)).push(x); }
+  const past = all.filter(x => dayKey(x.c.publishAt) < today).length, times = slots();
+  const keys = new Set(byDay.keys()); for (let i = 0; i < 7; i++) keys.add(new Date(new Date(today + 'T12:00:00Z').getTime() + i * 864e5).toISOString().slice(0, 10));
+  const days = [...keys].sort().map(k => { const rows = (byDay.get(k) || []).map(x => ({t:hm(x.c.publishAt), x})); if (k >= today) for (const sl of times) if (!rows.some(r => r.t === sl.time)) rows.push({t:sl.time, x:null, show:sl.show});
+    rows.sort((a, b) => a.t.localeCompare(b.t));
+    return h('div', {class:'day'}, h('h3', null, dayName(k), k === today ? ' · today' : ''), rows.map(r => r.x ? h('div', {class:'slot'}, h('span', {class:'t'}, fmt12(r.t).replace(' ', ' ')),
+        h('div', {class:'b'}, h('b', null, String(r.x.c.title || 'Clip ' + r.x.c.n) + (r.x.c.parts > 1 ? ' · Part ' + r.x.c.part + ' of ' + r.x.c.parts : '')),
+          h('div', {class:'row'}, h('span', {class:'pill ' + qState(r.x.c)[1]}, qState(r.x.c)[0]), h('button', {class:'btn ghost sm', type:'button', onclick:() => go('job', r.x.id)}, r.x.j.name || 'Job'),
+            h('button', {class:'btn ghost sm', type:'button', onclick:() => openEditor(r.x)}, hasVid(r.x.c) ? 'Watch' : 'Edit'))))
+      : h('div', {class:'slot open'}, h('span', {class:'t'}, fmt12(r.t).replace(' ', ' ')), h('div', {class:'b'}, 'Open' + (r.show ? ' · ' + r.show : ''))))); });
+  return [pagehead('Schedule', 'Each day, slot by slot.', 'Every clip with a post time, in ' + tzName() + '. Open rows are post times with no clip yet.'),
+    h('div', {class:'stack', style:'max-width:760px;gap:8px'}, coverage(),
+      past ? h('div', {style:'padding-top:10px'}, h('button', {class:'btn ghost sm', type:'button', onclick:() => { S.showPast = !S.showPast; render(); }}, S.showPast ? 'Hide past days' : 'Show ' + past + ' past clips')) : null, days)];
+}
+
+/* ---------- setup ---------- */
+function vSetup(){
+  const num = h('span', {class:'num', id:'acct-key', style:'font-size:clamp(20px,6vw,28px);-webkit-user-select:all;user-select:all'}, S.key); let sure = false;
+  return [pagehead('Setup', 'Your studio.', 'Your studio number, your answers and your clip choices. Every new job starts from these.'),
+    h('div', {class:'stack', style:'max-width:760px'},
+      group('Studio', S.acct.legacy ? 'First studio' : null,
+        field('f-acct-name', 'Studio name', null, h('input', {type:'text', id:'f-acct-name', maxlength:60, value:S.acct.name || '', onchange:e => { const v = e.target.value.trim(); if (v) saveAcct({name:v}).then(render); else e.target.value = S.acct.name || ''; }})),
+        h('div', {class:'field'}, h('span', {class:'fl'}, 'Studio number'), h('p', {class:'fh'}, 'This number is the only way into this studio. There is no password. Keep it somewhere safe.'), num, h('div', null, copyBtn(S.key, num, 'f-acct-copy')))),
+      group('Your answers', '5 steps', recRows(), h('div', null, h('button', {class:'btn ghost', type:'button', id:'f-acct-wiz', onclick:() => { S.back = false; S.welcome = false; go('step', 0); }}, 'Run the five steps again'))),
+      group('Clip choices', 'For new jobs', CLIPSTEP.body()),
+      group('Leave', null, h('div', {class:'row'},
+        h('button', {class:'btn warn', type:'button', id:'f-acct-out', onclick:e => { if (sure) signOut('', true); else { sure = true; e.currentTarget.textContent = 'Sign out? You need the studio number to get back in.'; } }}, 'Sign out'),
+        owner ? h('button', {class:'btn ghost', type:'button', id:'f-admin', onclick:() => go('admin')}, 'Admin: see all studio numbers') : null)))];
+}
+
+/* ---------- start ---------- */
+function route(){
+  if (!S.key){ if (S.screen !== 'admin') S.screen = 'signin'; return render(); }
+  if (['step','start','edit','admin'].includes(S.screen)) return render();
+  const m = /^#job-(.+)$/.exec(location.hash), v = location.hash.slice(1), t = TABS.find(x => x[2] === v);
+  if (m && S.jobs.has(m[1])){ S.screen = 'job'; S.id = m[1]; } else if (t) S.screen = t[0]; else if (S.screen === 'signin' || !TABS.some(x => x[0] === S.screen)) S.screen = 'recap';
+  render();
+}
+addEventListener('hashchange', () => { if (S.key && !['step','start','edit'].includes(S.screen)) route(); });
+// Is there a studio from before accounts that no account holds yet? The sign-in screen offers to give it a number.
+function checkOld(n){
+  (db ? Promise.all([db.doc('meta/legacy').get(), db.doc('settings/main').get()]).then(([m, s]) => ({claimed:m.exists, main:s.exists}))
+    : Promise.resolve({claimed:!!localGet('s4f.legacyClaimed', false), main:localGet('s4f.set', null) !== null})).then(o => { S.old = o;
+      if (S.screen !== 'signin' || S.gate.wait || S.busy || S.store === 'wait' || !offerOld() || typing()) return; render(); },
+    e => { if (again(e)) setTimeout(checkOld, Math.min(30000, 3000 * (n || 1)), (n || 1) + 1); });
+}
+// Runs once, when the store is known. A number remembered on this device opens its studio without asking.
+async function boot(){
+  checkOld(); const k = normKey(localGet('s4f.key', ''));
+  if (k){ const r = await openAcct(k, 3);
+    if (r) Object.assign(S.gate, {key:k, msg:r !== 'none' ? r : db ? 'The studio remembered on this device no longer exists. Enter another number, or get a new one.' : NOLOCAL});
+    else if (S.acct.setupDone){ S.screen = 'recap'; S.welcome = true; } else { S.screen = 'step'; S.step = 0; S.welcome = false; } }
+  S.busy = false; if (S.store !== 'wait') route();
+}
+function useLocal(){ db = null; S.store = 'local'; ALL = new Map(Object.entries(localGet('s4f.jobs', {}))); boot(); }
+render();
+const cl = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
+if (cl){
+  cl.use('db').then(d => { if (!d) return useLocal(); db = d; col = d.collection('jobs');
+    const t = setTimeout(() => { if (S.store === 'wait'){ S.store = 'db'; S.note = 'Your saved jobs cannot be reached yet. The page keeps trying.'; render(); } }, 10000);
+    // One watch on all jobs for the life of the page. Signing in or out only changes which of them S.jobs holds.
+    col.onSnapshot(snap => { clearTimeout(t); S.note = ''; const first = S.store === 'wait'; S.store = 'db'; const m = new Map(); for (const x of snap.docs){ const old = ALL.get(x.id); m.set(x.id, Object.assign({}, x.data(), old && old.sentNote ? {sentNote:old.sentNote} : {})); } ALL = m; scope();
+      if (first){ if (!S.busy) route(); return; } soft(); },
+      () => { clearTimeout(t); S.store = 'db'; S.note = 'Your saved jobs could not be loaded. Close and reopen this page.'; render(); });
+    boot();
+  }).catch(useLocal);
+  cl.use('comments').then(x => { comments = x || null; }).catch(() => {});
+  cl.use('downloads').then(x => { downloads = x || null; }).catch(() => {});
+  cl.use('assets').then(x => { assets = x || null; }).catch(() => {});
+  cl.use('user').then(u => u ? u.isOwner() : false).then(v => { owner = !!v; if (owner && !S.busy && S.store !== 'wait' && (S.screen === 'signin' || S.screen === 'setup') && !typing() && !S.gate.wait) render(); }).catch(() => {});
+} else useLocal();
+})();
+</script>

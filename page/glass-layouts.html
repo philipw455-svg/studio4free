@@ -1,0 +1,194 @@
+<title>Studio4Free Glass Layouts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: a contact sheet. One glass style, four ways to arrange the screens. Two phone frames per layout. */
+:root{ --bg:#f4f4f2; --ink:#17181c; --muted:#62656e; --line:#dcdcd6; --mark:#17181c; --mark-ink:#ffffff;
+  --ui:"Inter","Helvetica Neue",Arial,sans-serif; --num:"JetBrains Mono",ui-monospace,Menlo,monospace; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#131417; --ink:#eeeef0; --muted:#9a9da8; --line:#2a2c33; --mark:#eeeef0; --mark-ink:#131417; color-scheme:dark } }
+:root[data-theme="dark"]{ --bg:#131417; --ink:#eeeef0; --muted:#9a9da8; --line:#2a2c33; --mark:#eeeef0; --mark-ink:#131417; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--ui);-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+h1,h2,p{margin:0}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+.head{display:flex;flex-direction:column;gap:8px;max-width:60ch}
+.head h1{font:700 30px/1.15 var(--ui);letter-spacing:-.02em;text-wrap:balance}
+.head p{color:var(--muted)}
+.look{display:flex;flex-direction:column;gap:16px;border-top:1px solid var(--line);padding-top:22px}
+.cap{display:flex;gap:14px;align-items:flex-start}
+.cap .k{flex:none;width:44px;height:44px;border-radius:12px;background:var(--mark);color:var(--mark-ink);display:grid;place-items:center;font:700 20px var(--num)}
+.cap div{min-width:0}
+.cap h2{font:700 21px/1.2 var(--ui)}
+.cap p{color:var(--muted);font-size:15px;max-width:62ch}
+.phones{display:flex;gap:18px;flex-wrap:wrap}
+.tag{font:500 11px var(--num);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+
+/* ---- the phone: one committed liquid glass look, so its colours are fixed on purpose ---- */
+.ph{--w:#ffffff;--w2:rgba(255,255,255,.78);--edge:rgba(255,255,255,.4);--glass:rgba(255,255,255,.16);--deep:#2a1a5e;
+  --lift:inset 0 1px 0 rgba(255,255,255,.65),inset 0 -1px 0 rgba(255,255,255,.12),0 10px 28px rgba(10,8,40,.22);
+  width:300px;max-width:100%;height:620px;border-radius:36px;border:8px solid #0c0c0f;color:var(--w);overflow:hidden;position:relative;display:flex;flex-direction:column;
+  font-family:-apple-system,"SF Pro Text","Inter",Arial,sans-serif;
+  background:radial-gradient(120% 70% at 12% 8%,#ff8a5c 0%,transparent 55%),radial-gradient(110% 70% at 95% 30%,#b25cff 0%,transparent 60%),radial-gradient(120% 80% at 20% 100%,#2f7bff 0%,transparent 60%),linear-gradient(160deg,#3a1d6e,#0d2a66)}
+.g{background:var(--glass);border:1px solid var(--edge);box-shadow:var(--lift);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%)}
+.scr{flex:1;min-height:0;padding:18px 14px 0;display:flex;flex-direction:column;gap:11px;overflow:hidden}
+.brand{font-weight:700;font-size:15px;opacity:.9}
+.h{font-weight:800;font-size:27px;letter-spacing:-.02em;line-height:1.05}
+.sub{font-size:12.5px;color:var(--w2);line-height:1.4}
+.mt{font-size:11.5px;color:var(--w2)}
+.pl{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.2)}
+.pl.ok{background:rgba(70,230,160,.4)} .pl.w{background:rgba(255,190,70,.45)}
+.rw{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.bt{min-height:42px;border-radius:999px;display:grid;place-items:center;font-weight:700;font-size:12.5px;padding:0 10px;white-space:nowrap}
+.bt.p{background:rgba(255,255,255,.92);color:var(--deep);box-shadow:var(--lift)}
+.tb{flex:none;display:flex;gap:4px;margin:0 14px 14px;padding:5px;border-radius:999px}
+.tb span{flex:1;min-height:36px;border-radius:999px;display:grid;place-items:center;font-weight:700;font-size:12px;color:var(--w2)}
+.tb span.on{background:rgba(255,255,255,.9);color:var(--deep)}
+.t{font:700 12px var(--num)}
+.dy{font-weight:700;font-size:12.5px}
+
+/* 1. Stack */
+.cd{border-radius:24px;padding:12px;display:flex;flex-direction:column;gap:7px}
+.cd b{font-size:15px}
+.sl{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;border-radius:22px;padding:10px 12px}
+.sl b{font-size:13px;line-height:1.3;display:block;margin-bottom:5px}
+.open{border:1.5px dashed var(--edge);border-radius:22px;padding:9px 12px;font-size:12.5px;color:var(--w2);display:flex;gap:12px}
+
+/* 2. Clip wall */
+.link{display:flex;align-items:center;gap:8px;border-radius:999px;padding:5px 5px 5px 16px;font-size:13px;color:var(--w2)}
+.link i{margin-left:auto;flex:none;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.92);color:var(--deep);display:grid;place-items:center;font:800 20px/1 var(--ui);font-style:normal}
+.wall{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tile{aspect-ratio:9/16;border-radius:16px;padding:7px;display:flex;flex-direction:column;justify-content:space-between;font-size:10.5px;font-weight:600;line-height:1.2;overflow:hidden}
+.tile .t{font-size:10px;align-self:flex-start;background:rgba(0,0,0,.28);padding:3px 6px;border-radius:999px}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.week span{border-radius:14px;padding:7px 0 6px;text-align:center;font-size:10px;color:var(--w2);display:flex;flex-direction:column;gap:2px;align-items:center}
+.week span b{font-size:14px;color:var(--w)}
+.week span u{width:5px;height:5px;border-radius:50%;background:var(--w);text-decoration:none}
+.week span.on{background:rgba(255,255,255,.9);color:var(--deep)} .week span.on b{color:var(--deep)} .week span.on u{background:var(--deep)}
+.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.duo .tile{aspect-ratio:auto;height:215px;font-size:12.5px;padding:10px}
+
+/* 3. Next up */
+.seg{display:flex;gap:4px;padding:4px;border-radius:999px}
+.seg span{flex:1;min-height:32px;border-radius:999px;display:grid;place-items:center;font-weight:700;font-size:12px;color:var(--w2)}
+.seg span.on{background:rgba(255,255,255,.9);color:var(--deep)}
+.hero{border-radius:28px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.hero .big{font:800 46px/1 var(--ui);letter-spacing:-.03em}
+.hero b{font-size:15px;line-height:1.3}
+.line{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:12.5px;padding:8px 2px;border-top:1px solid rgba(255,255,255,.22)}
+.line b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dock{flex:none;margin:0 14px 14px}
+.bar{height:6px;border-radius:999px;background:rgba(255,255,255,.22);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;background:var(--w)}
+
+/* 4. Sheet */
+.sheet{flex:1;min-height:0;margin:0 0 -30px;border-radius:30px 30px 0 0;padding:16px 16px 40px;display:flex;flex-direction:column}
+.sheet .line:first-child{border-top:0}
+.row2{display:flex;flex-direction:column;gap:3px;padding:11px 0;border-top:1px solid rgba(255,255,255,.22)}
+.row2:first-child{border-top:0}
+.row2 b{font-size:15px}
+.fab{position:absolute;right:18px;bottom:20px;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.92);color:var(--deep);display:grid;place-items:center;font:800 28px/1 var(--ui);box-shadow:var(--lift)}
+.icons{position:absolute;left:18px;bottom:24px;display:flex;gap:4px;padding:5px;border-radius:999px}
+.icons span{width:40px;height:38px;border-radius:999px;display:grid;place-items:center;color:var(--w2)}
+.icons span.on{background:rgba(255,255,255,.9);color:var(--deep)}
+.icons svg{width:19px;height:19px}
+.rail{position:relative;padding-left:20px;display:flex;flex-direction:column;gap:13px}
+.rail::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:rgba(255,255,255,.35);border-radius:2px}
+.rail div{position:relative;font-size:12.5px;line-height:1.3}
+.rail div::before{content:"";position:absolute;left:-20px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--w);box-shadow:0 0 0 3px rgba(255,255,255,.25)}
+.rail div.o::before{background:transparent;border:2px solid var(--w2);box-shadow:none}
+.rail div.o{color:var(--w2)}
+.rail .t{display:block;margin-bottom:1px}
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <h1>Four layouts in liquid glass</h1>
+    <p>The glass style stays the same in all four. Only the arrangement of each screen changes. Every layout shows your real clips. Tell me the number you want.</p>
+  </div>
+
+  <section class="look">
+    <div class="cap"><span class="k">1</span><div><h2>Stack</h2><p>The layout from look F. Each job is a card. The tab bar floats at the bottom. Simple and familiar.</p></div></div>
+    <div class="phones">
+      <div><div class="tag">Jobs</div><div class="ph"><div class="scr"><div class="brand">Studio4Free</div><div class="h">Jobs</div>
+        <div class="rw"><div class="bt p" style="flex:1">New clipping job</div><div class="bt g" style="flex:1">New edit job</div></div>
+        <div class="cd g"><div class="rw"><span class="pl">Clips</span><span class="pl ok">Scheduled</span></div><b>journey</b><div class="mt">20 clips · 2 a day from Nov 20</div></div>
+        <div class="cd g"><div class="rw"><span class="pl">Clips</span><span class="pl ok">Scheduled</span></div><b>tate</b><div class="mt">20 clips · YouTube and TikTok</div></div>
+        <div class="cd g"><div class="rw"><span class="pl">Edit</span><span class="pl w">Waiting</span></div><b>Your next job</b><div class="mt">Example row</div></div></div>
+        <div class="tb g"><span class="on">Jobs</span><span>Schedule</span><span>Setup</span></div></div></div>
+      <div><div class="tag">Schedule</div><div class="ph"><div class="scr"><div class="brand">Studio4Free</div><div class="h">Schedule</div><div class="dy">Friday, Nov 20</div>
+        <div class="sl g"><span class="t">12:15</span><div><b>Liam Fitzgerald: the first thing to do after a breakup</b><span class="pl w">Draft</span></div></div>
+        <div class="sl g"><span class="t">17:00</span><div><b>Would you stay friends with someone who flaked on you like this?</b><span class="pl w">Draft</span></div></div>
+        <div class="dy">Saturday, Nov 21</div>
+        <div class="sl g"><span class="t">12:15</span><div><b>Liam Fitzgerald's simple fitness plan</b><span class="pl w">Draft</span></div></div>
+        <div class="open"><span class="t">17:00</span>Open</div></div>
+        <div class="tb g"><span>Jobs</span><span class="on">Schedule</span><span>Setup</span></div></div></div>
+    </div>
+  </section>
+
+  <section class="look">
+    <div class="cap"><span class="k">2</span><div><h2>Clip wall</h2><p>The clips come first, as tall tiles like a TikTok profile. A link bar sits at the top. The schedule uses a week strip.</p></div></div>
+    <div class="phones">
+      <div><div class="tag">Home</div><div class="ph"><div class="scr"><div class="brand">Studio4Free</div>
+        <div class="link g">Paste a YouTube link<i>+</i></div>
+        <div class="rw"><span class="pl" style="background:rgba(255,255,255,.9);color:var(--deep)">All 40</span><span class="pl">journey</span><span class="pl">tate</span></div>
+        <div class="wall">
+          <div class="tile g"><span class="t">Fri 12:15</span>After the breakup: step one</div>
+          <div class="tile g"><span class="t">Fri 17:00</span>Would you stay friends with you?</div>
+          <div class="tile g"><span class="t">Sat 12:15</span>90% of the way there</div>
+          <div class="tile g"><span class="t">Clip 13</span>The loneliest feeling there is</div>
+          <div class="tile g"><span class="t">Clip 20</span>Who hijacked marriage?</div>
+          <div class="tile g"><span class="t">Clip 4</span>Church doesn't need a smoke machine</div>
+        </div></div>
+        <div class="tb g"><span class="on">Clips</span><span>Schedule</span><span>Setup</span></div></div></div>
+      <div><div class="tag">Schedule</div><div class="ph"><div class="scr"><div class="brand">Studio4Free</div><div class="h">November</div>
+        <div class="week"><span class="g">Mon<b>16</b></span><span class="g">Tue<b>17</b></span><span class="g">Wed<b>18</b></span><span class="g">Thu<b>19</b></span><span class="on">Fri<b>20</b><u></u></span><span class="g">Sat<b>21</b><u></u></span><span class="g">Sun<b>22</b><u></u></span></div>
+        <div class="dy">Friday, Nov 20 · 2 clips</div>
+        <div class="duo">
+          <div class="tile g"><span class="t">12:15</span><span>Liam Fitzgerald: the first thing to do after a breakup<br><span class="pl w" style="margin-top:6px">Draft</span></span></div>
+          <div class="tile g"><span class="t">17:00</span><span>Would you stay friends with someone who flaked on you like this?<br><span class="pl w" style="margin-top:6px">Draft</span></span></div>
+        </div></div>
+        <div class="tb g"><span>Clips</span><span class="on">Schedule</span><span>Setup</span></div></div></div>
+    </div>
+  </section>
+
+  <section class="look">
+    <div class="cap"><span class="k">3</span><div><h2>Next up</h2><p>The first screen answers one question: what posts next? A link bar stays at the bottom, like a message box. Tabs move to the top.</p></div></div>
+    <div class="phones">
+      <div><div class="tag">Today</div><div class="ph"><div class="scr"><div class="seg g"><span class="on">Next up</span><span>Jobs</span><span>Setup</span></div>
+        <div class="hero g"><div class="rw"><span class="pl">Next post</span><span class="pl w">Draft</span></div><div class="big">12:15</div><div class="mt">Friday, Nov 20 · journey</div><b>Liam Fitzgerald: the first thing to do after a breakup</b></div>
+        <div class="dy">After that</div>
+        <div><div class="line"><span class="t">17:00</span><b>Would you stay friends with someone…</b><span class="mt">Fri</span></div>
+          <div class="line"><span class="t">12:15</span><b>Liam Fitzgerald's simple fitness plan</b><span class="mt">Sat</span></div>
+          <div class="line"><span class="t">17:00</span><b style="color:var(--w2);font-weight:400">Open</b><span class="mt">Sat</span></div></div></div>
+        <div class="dock link g">Paste a YouTube link<i>+</i></div></div></div>
+      <div><div class="tag">Jobs</div><div class="ph"><div class="scr"><div class="seg g"><span>Next up</span><span class="on">Jobs</span><span>Setup</span></div>
+        <div class="cd g"><div class="rw"><b style="flex:1">journey</b><span class="pl w">20 drafts</span></div><div class="bar"><i style="width:100%"></i></div><div class="mt">20 of 20 clips have a time · Nov 20 to 29</div></div>
+        <div class="cd g"><div class="rw"><b style="flex:1">tate</b><span class="pl ok">Scheduled</span></div><div class="bar"><i style="width:100%"></i></div><div class="mt">20 of 20 clips have a time · YouTube and TikTok</div></div>
+        <div class="cd g"><div class="rw"><b style="flex:1">Your next job</b><span class="pl">Example</span></div><div class="bar"><i style="width:35%"></i></div><div class="mt">Cutting clips</div></div></div>
+        <div class="dock link g">Paste a YouTube link<i>+</i></div></div></div>
+    </div>
+  </section>
+
+  <section class="look">
+    <div class="cap"><span class="k">4</span><div><h2>Sheet</h2><p>One large glass sheet holds a plain list, with no separate cards. A round button adds a job. The schedule is a timeline with dots.</p></div></div>
+    <div class="phones">
+      <div><div class="tag">Jobs</div><div class="ph"><div class="scr"><div class="brand">Studio4Free</div><div class="h">Jobs</div><div class="sub">40 clips in 2 jobs</div>
+        <div class="sheet g">
+          <div class="row2"><div class="rw"><b style="flex:1">journey</b><span class="pl w">20 drafts</span></div><div class="mt">2 a day from Nov 20 · YouTube</div></div>
+          <div class="row2"><div class="rw"><b style="flex:1">tate</b><span class="pl ok">Scheduled</span></div><div class="mt">20 clips · YouTube and TikTok</div></div>
+          <div class="row2"><div class="rw"><b style="flex:1">Your next job</b><span class="pl">Example</span></div><div class="mt">Waiting for Claude Code</div></div>
+        </div></div>
+        <div class="icons g"><span class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16"/></svg></span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 8h8M17 8h2M5 16h2M11 16h8"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg></span></div>
+        <div class="fab">+</div></div></div>
+      <div><div class="tag">Schedule</div><div class="ph"><div class="scr"><div class="brand">Studio4Free</div><div class="h">Schedule</div><div class="sub">Central time</div>
+        <div class="sheet g"><div class="dy" style="margin-bottom:10px">Friday, Nov 20</div>
+          <div class="rail"><div><span class="t">12:15</span>Liam Fitzgerald: the first thing to do after a breakup</div><div><span class="t">17:00</span>Would you stay friends with someone who flaked on you like this?</div></div>
+          <div class="dy" style="margin:16px 0 10px">Saturday, Nov 21</div>
+          <div class="rail"><div><span class="t">12:15</span>Liam Fitzgerald's simple fitness plan</div><div class="o"><span class="t">17:00</span>Open</div></div>
+        </div></div>
+        <div class="icons g"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></span><span class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16"/></svg></span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 8h8M17 8h2M5 16h2M11 16h8"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg></span></div>
+        <div class="fab">+</div></div></div>
+    </div>
+  </section>
+</div>

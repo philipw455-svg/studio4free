@@ -1,0 +1,7 @@
+jobs/
+__pycache__/
+*.pyc
+.venv/
+page/overlays-*
+stock/
+.DS_Store
