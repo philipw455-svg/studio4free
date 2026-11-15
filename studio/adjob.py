@@ -30,7 +30,7 @@ STEPS = [
 STATUSES = [s["status"] for s in STEPS] + ["sent", "scheduling", "learned", "blocked"]
 
 CHOICES = {
-    "style": ["App tour", "Mascot story", "Hype type", "Sting", "Podcast clip with end card"],
+    "style": ["App tour", "Mascot story", "Hype type", "Sting", "Podcast clip with end card", "Custom"],
     "length": ["2 s", "15 s", "30 s", "60 s"],
     "shape": ["9:16", "1:1", "16:9"],
     "look": "the brand's current looks in kit.md",

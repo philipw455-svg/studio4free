@@ -1,374 +1,229 @@
-<title>Ad Scene Editor</title>
+<title>Ad Maker</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a film-strip editor. The live preview stays pinned on the left (on top on a phone); scenes stack as cards beside it. */
+/* One box: say what the ad is. Claude writes it, checks it against the brand brain, films it and puts the video here. */
 :root{
   --bg:#0E0E11; --panel:#16161B; --raise:#1D1D24; --line:#2A2A33; --ink:#E8E8EC; --quiet:#9A9AA8; --accent:#FF4F6D; --ok:#5BD69A; --warn:#F2B84B;
   --sans:"Inter Tight", system-ui, -apple-system, Segoe UI, sans-serif; --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--sans);padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 60px}
-button,input,select,textarea{font:inherit;color:inherit}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--sans);padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 60px;margin:0}
+button,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding-block:16px;border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top, 0px);background:var(--bg);z-index:5}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg)}
+main{max-width:720px;margin:0 auto}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding-block:20px 16px}
 .brandmark{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--quiet)}
-.top h1{margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em}
-.top .grow{flex:1 1 auto}
-select,input[type=text],input[type=number],textarea{background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
-textarea{width:100%;resize:vertical;min-height:52px;font-size:17px;font-weight:600}
-.btn{border:1px solid var(--line);background:var(--raise);border-radius:999px;padding:8px 14px;font-weight:600}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#22062F}
-.btn.small{padding:4px 10px;font-size:13px}
+h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.grow{flex:1 1 auto}
+select,textarea{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:0}
+textarea{width:100%;resize:vertical;min-height:130px;font-size:17px;line-height:1.4;padding:14px}
+.btn{border:1px solid var(--line);background:var(--raise);border-radius:999px;padding:9px 16px;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#22062F;padding:11px 22px;font-size:16px}
+.btn.small{padding:5px 12px;font-size:13px}
 .btn:disabled{opacity:.45;cursor:default}
-.save{font-family:var(--mono);font-size:12px;color:var(--quiet)}
-.save.bad{color:var(--warn)}
-.wrap{display:grid;grid-template-columns:minmax(260px, 340px) minmax(0, 1fr);gap:28px;padding-top:20px;align-items:start}
-@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
-.stage{position:sticky;top:84px;display:flex;flex-direction:column;gap:12px}
-@media (max-width:760px){.stage{position:static}.screen{max-width:230px}}
-.screen{position:relative;width:100%;max-width:340px;margin:0 auto;border-radius:22px;overflow:hidden;border:1px solid var(--line);background:#000}
-.screen iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;pointer-events:none}
-.player{display:flex;align-items:center;gap:10px}
-.player input[type=range]{flex:1;accent-color:var(--accent)}
-.time{font-family:var(--mono);font-size:12px;color:var(--quiet);font-variant-numeric:tabular-nums;min-width:86px;text-align:right}
-.hint{font-size:13px;color:var(--quiet);margin:0}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px}
-.panel h2{margin:0;font-size:13px;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--quiet)}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.field{display:flex;flex-direction:column;gap:6px;min-width:0}
-.field>label,.lbl{font-size:12px;color:var(--quiet);font-weight:500}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.lbl{font-size:12px;color:var(--quiet);font-weight:500;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 11px;font-size:13px;font-weight:500;color:var(--quiet)}
+.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;color:var(--quiet);text-align:left}
 .chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.chip .sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:1px solid var(--line)}
-.scenes{display:flex;flex-direction:column;gap:14px;min-width:0}
-.scene{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.scene.now{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-.shead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.num{font-family:var(--mono);font-size:12px;background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:3px 8px}
-.span{font-family:var(--mono);font-size:12px;color:var(--quiet);font-variant-numeric:tabular-nums}
-.shead .grow{flex:1}
-.icon{border:1px solid var(--line);background:var(--raise);border-radius:8px;width:32px;height:32px;display:inline-grid;place-items:center;font-size:14px;line-height:1}
-.secs{display:flex;align-items:center;gap:6px}
-.secs input{width:72px;text-align:center;font-family:var(--mono)}
-.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
-.thumb{padding:0;border:2px solid transparent;border-radius:10px;overflow:hidden;background:var(--raise);aspect-ratio:9/19.5}
-.thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.thumb[aria-pressed=true]{border-color:var(--accent)}
-.thumb.none{display:grid;place-items:center;font-size:12px;color:var(--quiet);aspect-ratio:auto;min-height:60px}
-details.more{border-top:1px solid var(--line);padding-top:10px}
-details.more summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--quiet);list-style:none}
-details.more summary::before{content:"+ ";font-family:var(--mono)}
-details.more[open] summary::before{content:"– "}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px}
-.probs{display:flex;flex-direction:column;gap:4px}
-.prob{font-size:13px;color:var(--warn)}
+.ideas .chip{font-size:13px;line-height:1.3;border-radius:14px}
+.hint{font-size:13px;color:var(--quiet);margin:0}
+.msg{font-size:14px;margin:0}
+.msg.bad,.prob{color:var(--warn)}
+.msg.good{color:var(--ok)}
+.prob{font-size:14px}
 .prob::before{content:"! ";font-family:var(--mono)}
-.okline{font-size:13px;color:var(--ok)}
-.toggle{display:flex;align-items:center;gap:8px;font-size:14px}
-.toggle input{accent-color:var(--accent);width:18px;height:18px}
-.status{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:3px 9px;color:var(--quiet)}
-.status.ready{color:var(--ok);border-color:var(--ok)}
+h2{font-size:13px;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--quiet);margin:30px 0 12px}
+.list{display:flex;flex-direction:column;gap:14px}
+.ad{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.ad .ask{font-size:16px;font-weight:600;margin:0;overflow-wrap:anywhere}
+.meta{font-family:var(--mono);font-size:12px;color:var(--quiet)}
+.status{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:3px 9px;color:var(--quiet);white-space:nowrap}
+.status.done{color:var(--ok);border-color:var(--ok)}
+.status.making{color:var(--accent);border-color:var(--accent)}
+video{width:100%;max-width:340px;border-radius:16px;border:1px solid var(--line);background:var(--raise);display:block}
+.note{font-size:14px;color:var(--ink);margin:0;white-space:pre-wrap}
 .empty{color:var(--quiet);padding:24px;text-align:center;border:1px dashed var(--line);border-radius:16px}
-@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+.change textarea{min-height:70px;font-size:15px}
 </style>
 
+<main>
 <header class="top">
   <div>
     <div class="brandmark">Studio4Free · Business automation</div>
-    <h1>Ad Scene Editor</h1>
+    <h1>Ad Maker</h1>
   </div>
   <div class="grow"></div>
-  <select id="adPick" aria-label="Which ad"></select>
-  <button class="btn" id="newBtn" type="button">New ad</button>
-  <span class="save" id="saveState">Loading…</span>
+  <select id="brandPick" aria-label="Which brand"></select>
 </header>
 
-<div class="wrap">
-  <section class="stage" aria-label="Preview">
-    <div class="screen" id="screen"><iframe id="frame" title="Ad preview"></iframe></div>
-    <div class="player">
-      <button class="icon" id="playBtn" type="button" aria-label="Play">▶</button>
-      <input type="range" id="scrub" min="0" max="10" step="0.01" value="0" aria-label="Time">
-      <span class="time" id="time">0.0 / 0.0 s</span>
-    </div>
-    <p class="hint">The preview uses the same templates that film the final video. Sound plays only in the final video.</p>
-    <div class="panel" id="adPanel"></div>
-  </section>
+<section class="panel" aria-label="New ad">
+  <label class="lbl" for="ask">What ad do you want?</label>
+  <textarea id="ask" placeholder="Say it the way you would to a friend: the style, the theme, the camera, who is in it, what happens."></textarea>
+  <div class="chips ideas" id="ideas" aria-label="Ideas to start from"></div>
+  <div class="row">
+    <span class="lbl">Length</span>
+    <div class="chips" id="lenPick"></div>
+  </div>
+  <div class="row">
+    <span class="lbl">Shape</span>
+    <div class="chips" id="shapePick"></div>
+  </div>
+  <div id="warn"></div>
+  <div class="row">
+    <button class="btn primary" id="go" type="button">Make this ad</button>
+    <p class="msg" id="goMsg"></p>
+  </div>
+  <p class="hint">Claude writes it, checks it against the brand's rules, films it and puts the video below. Nothing posts until you approve it.</p>
+</section>
 
-  <section class="scenes" id="scenes" aria-label="Scenes"></section>
-</div>
+<h2>Your ads</h2>
+<div class="list" id="list"><div class="empty">Loading…</div></div>
+</main>
 
 <script>
 (() => {
-const $ = (s, el = document) => el.querySelector(s);
+const $ = (s) => document.querySelector(s);
 const h = (tag, attrs = {}, ...kids) => {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (k === "on") for (const [ev, fn] of Object.entries(v)) el.addEventListener(ev, fn);
-    else if (k === "class") el.className = v;
-    else if (v === true) el.setAttribute(k, "");
-    else if (v !== false && v != null) el.setAttribute(k, v);
+    else if (v !== false && v != null) el.setAttribute(k, v === true ? "" : v);
   }
-  for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : String(c));
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid);
   return el;
 };
+const IDEAS = [
+  "Hype kinetic typography with a brand launch theme of ancient Rome. Big camera moves through the scene, and feature the Trojan horse.",
+  "Use all 4 mascots to tell a story: the group loses each other on a night out, and Noxi brings everyone's photos back together.",
+  "A quick sting: the logo lands, one line, then the link.",
+];
+const LENGTHS = ["10 s", "15 s", "30 s", "60 s"], SHAPES = ["9:16", "1:1", "16:9"];
+const STATUS = { asked: "Sent to Claude", making: "Claude is making it", done: "Ready to watch", approved: "Approved", stuck: "Needs you" };
+let BRANDS = [], brand = null, db = null, comments = null, ads = [], len = "15 s", shape = "9:16";
 
-// ---------- what the brain and the templates offer ----------
-const STYLES = { "App tour": "app-tour", "Mascot story": "mascot-story", "Hype type": "hype-type", "Sting": "sting" };
-const PICTURE = { "App tour": "screen", "Hype type": "screen", "Mascot story": "mascots", "Sting": "none" };
-const SIZES = ["S", "M", "L", "XL"], SPOTS = ["top", "middle", "bottom"], MOTIONS = ["slide", "pop", "fade", "type", "none"], SPEEDS = ["Calm", "Normal", "Hyped"];
-let BRAND = null, brandId = "noxi";
-let db = null, ads = [], ad = null, saving = Promise.resolve(), dirty = false, saveTimer = 0;
-const abs = (p) => new URL(`brand/${brandId}/${p}`, location.href).href;
+function chips(el, options, get, set) {
+  el.replaceChildren(...options.map((o) => h("button", { type: "button", class: "chip", "aria-pressed": String(o === get()),
+    on: { click: () => { set(o); chips(el, options, get, set); } } }, o)));
+}
+chips($("#lenPick"), LENGTHS, () => len, (v) => (len = v));
+chips($("#shapePick"), SHAPES, () => shape, (v) => (shape = v));
+$("#ideas").replaceChildren(...IDEAS.map((t) => h("button", { type: "button", class: "chip", on: { click: () => { $("#ask").value = t; check(); $("#ask").focus(); } } }, t)));
 
-// ---------- storyboard helpers ----------
-function normalize(sb) {
-  let t = 0;
-  sb.frames = (sb.frames || []).map((f, i) => {
-    const dur = Math.max(0.5, Math.round(((f.dur != null ? f.dur : (f.end - f.start)) || 2) * 10) / 10);
-    const g = Object.assign({}, f, { n: i + 1, start: Math.round(t * 100) / 100, end: Math.round((t + dur) * 100) / 100, dur });
-    t += dur;
-    return g;
-  });
-  sb.length = Math.round(t * 100) / 100;
-  return sb;
+// Words the brand may never say: warn while typing. Claude's full check runs again on what it writes.
+function banned(text) {
+  if (!brand) return [];
+  const low = " " + text.toLowerCase() + " ";
+  return (brand.never || []).filter((w) => low.includes(w.toLowerCase())).concat((brand.avoid || []).filter((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text)));
 }
-function problems(f) {
-  const out = [], words = (f.words || "").trim();
-  if (words && f.dur < 2) out.push(`On screen for ${f.dur.toFixed(1)} s. Each line needs at least 2 s.`);
-  if (words.split("\n").filter((x) => x.trim()).length > 1) out.push("Two lines at once. Keep one line per scene.");
-  const has = (w) => new RegExp(`(^|[^\\w])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "[\\s-]+")}(s|es)?([^\\w]|$)`, "i").test(words) || (!/\w/.test(w) && words.includes(w));
-  for (const w of BRAND.avoid || []) if (has(w)) out.push(`"${w}" is on the words-to-avoid list.`);
-  for (const w of BRAND.never || []) if (has(w)) out.push(`"${w}" is not true yet (Never say list).`);
-  if (!words && !f.endCard) out.push("No words. Add a line, or turn this scene into the end card.");
-  return out;
+function check() {
+  const hits = banned($("#ask").value);
+  $("#warn").replaceChildren(...hits.map((w) => h("p", { class: "prob" }, `"${w}" is on ${brand.name}'s do-not-say list, so the ad can't use it.`)));
 }
+$("#ask").addEventListener("input", check);
 
-// ---------- the preview ----------
-const frame = $("#frame"), screen = $("#screen"), scrub = $("#scrub"), timeEl = $("#time"), playBtn = $("#playBtn");
-const tpl = {};
-let runtime = "", t = 0, playing = false, ready = false, last = 0, buildTimer = 0;
-const DIMS = { "9:16": [1080, 1920], "1:1": [1080, 1080], "16:9": [1920, 1080] };
-async function text(url) { const r = await fetch(url); if (!r.ok) throw new Error(url); return r.text(); }
-function brandFor(sb) {
-  const files = {};
-  for (const p of BRAND.files) files[p] = abs(p);
-  return { looks: BRAND.looks, fonts: BRAND.fonts.map((f) => ({ family: f.family, url: abs(f.url) })), logo: (BRAND.logos || {})[sb.look] || BRAND.logo,
-           cast: BRAND.cast, mascots: BRAND.mascots, base: abs(""), files };
-}
-async function build() {
-  if (!ad) return;
-  const key = STYLES[ad.style];
-  if (!key) { frame.removeAttribute("srcdoc"); return; }
-  if (!runtime) runtime = await text("ads/runtime.js");
-  if (!tpl[key]) tpl[key] = await text(`ads/${key}/template.html`);
-  const [w, hgt] = DIMS[ad.shape] || DIMS["9:16"];
-  frame.width = w; frame.height = hgt; fit();
-  const safe = (o) => JSON.stringify(o).replace(/</g, "\\u003c");
-  const inject = `<script>window.SB=${safe(ad)};window.BRAND=${safe(brandFor(ad))};<\/script>`;
-  ready = false;
-  frame.srcdoc = tpl[key].replace("<head>", "<head>" + inject).replace('<script src="../runtime.js"><' + '/script>', `<script>${runtime.replace(/<\/script/gi, "<\\/script")}<\/script>`);
-}
-frame.addEventListener("load", async () => {
-  try { await frame.contentWindow.ready; ready = true; seek(t); } catch (e) { ready = false; }
-});
-function fit() {
-  const [w, hgt] = [frame.width, frame.height], box = screen.clientWidth || 300, k = box / w;
-  frame.style.width = w + "px"; frame.style.height = hgt + "px"; frame.style.transform = `scale(${k})`;
-  screen.style.height = Math.round(hgt * k) + "px";
-}
-new ResizeObserver(fit).observe(screen);
-function seek(x) {
-  t = Math.max(0, Math.min(ad ? ad.length : 0, x));
-  scrub.value = t; timeEl.textContent = `${t.toFixed(1)} / ${(ad ? ad.length : 0).toFixed(1)} s`;
-  if (ready) try { frame.contentWindow.seek(t); } catch (e) {}
-  const cur = ad && ad.frames.find((f) => t >= f.start && t < f.end);
-  document.querySelectorAll(".scene").forEach((el) => el.classList.toggle("now", !!cur && +el.dataset.n === cur.n));
-}
-function loop(now) {
-  if (!playing) return;
-  const dt = last ? (now - last) / 1000 : 0; last = now;
-  let x = t + dt; if (x >= ad.length) x = 0;
-  seek(x); requestAnimationFrame(loop);
-}
-playBtn.addEventListener("click", () => { playing = !playing; playBtn.textContent = playing ? "❚❚" : "▶"; playBtn.setAttribute("aria-label", playing ? "Pause" : "Play"); last = 0; if (playing) requestAnimationFrame(loop); });
-scrub.addEventListener("input", () => seek(+scrub.value));
-function rebuildSoon() { clearTimeout(buildTimer); buildTimer = setTimeout(build, 350); }
+function say(el, text, kind) { el.textContent = text; el.className = "msg" + (kind ? " " + kind : ""); }
 
-// ---------- saving ----------
-function setSave(msg, bad) { const s = $("#saveState"); s.textContent = msg; s.classList.toggle("bad", !!bad); }
-function changed(rerender = true) {
-  normalize(ad);
-  ad.updatedAt = Date.now();
-  if (ad.status === "ready") ad.status = "draft";
-  dirty = true;
-  if (rerender) renderScenes(); else refreshProblems();
-  renderAdPanel(); scrub.max = ad.length; seek(t); rebuildSoon();
-  clearTimeout(saveTimer); saveTimer = setTimeout(save, 700);
+// Hand the request to the Claude Code session watching this page. Returns "sent" or the reason it could not.
+async function tellClaude(anchorEl, text) {
+  if (!comments) return "none";
+  try {
+    const can = await comments.canSendToClaude();
+    if (can !== "available") return can;
+    const anchor = await comments.anchorFor(anchorEl);
+    await comments.sendToClaude({ anchor, text });
+    return "sent";
+  } catch (e) { return (e && e.code) || "error"; }
 }
-function save() {
-  if (!db) { setSave("Not saved: open this page signed in to save", true); return; }
-  if (!dirty) return;
-  dirty = false;
-  const doc = JSON.parse(JSON.stringify(ad)), id = ad.id;
-  setSave("Saving…");
-  saving = saving.then(() => db.doc(`storyboards/${id}`).set(doc)).then(() => setSave("Saved"), (e) => { dirty = true; setSave("Not saved: " + (e && e.message || "try again"), true); });
-}
+const NOT_SENT = {
+  no_session: "Saved. No Claude Code session is listening right now: open Claude Code and say “make my ads”.",
+  writers_only: "Saved. Only the page's owner can send it to Claude.",
+};
+const notSent = (r) => NOT_SENT[r] || "Saved. It could not reach Claude by itself: tell Claude Code “make my ads”.";
 
-// ---------- the ad's own settings ----------
-function chipRow(options, value, onPick, label = (x) => x, extra) {
-  return h("div", { class: "chips", role: "group" }, options.map((o) => {
-    const b = h("button", { type: "button", class: "chip", "aria-pressed": String(o === value), on: { click: () => onPick(o) } });
-    if (extra) b.append(extra(o));
-    b.append(label(o));
-    return b;
-  }));
-}
-const swatch = (look) => { const c = (BRAND.looks[look] || {}).dark || {}; const s = h("span", { class: "sw" }); s.style.background = c.ground; s.style.boxShadow = `inset 0 0 0 3px ${c.accent || "transparent"}`; return s; };
-function renderAdPanel() {
-  const p = $("#adPanel"); p.replaceChildren();
-  if (!ad) return;
-  const looks = Object.keys(BRAND.looks);
-  p.append(
-    h("h2", {}, "The whole ad"),
-    h("div", { class: "field" }, h("label", { for: "adName" }, "Name"),
-      h("input", { type: "text", id: "adName", value: ad.title || "", on: { change: (e) => { ad.title = e.target.value; changed(false); fillPicker(); } } })),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Style"), chipRow(Object.keys(STYLES), ad.style, (v) => { ad.style = v; changed(); })),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Look"), chipRow(looks, ad.look, (v) => { ad.look = v; changed(); }, (x) => x, swatch)),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Light or dark"), chipRow(["dark", "light"], ad.mode || "dark", (v) => { ad.mode = v; changed(false); }, (x) => x === "dark" ? "Dark" : "Light")),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Pace"), chipRow(SPEEDS, ad.pace || "Normal", (v) => { ad.pace = v; changed(false); }, (x) => x === "Normal" ? "Normal" : x)),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Sound"), chipRow(["Beat", "Sound effects only", "Silent"], ad.sound || "Sound effects only", (v) => { ad.sound = v; changed(false); })),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Shape"), chipRow(["9:16", "1:1", "16:9"], ad.shape || "9:16", (v) => { ad.shape = v; changed(false); })),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Link at the end"), chipRow(BRAND.links, ad.cta, (v) => { ad.cta = v; changed(false); })),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Mascots in this ad"),
-      chipRow(BRAND.mascots, null, (v) => { const c = new Set(ad.cast || []); c.has(v) ? c.delete(v) : c.add(v); ad.cast = [...c]; changed(); }))
-  );
-  p.querySelectorAll(".field:last-child .chip").forEach((b) => b.setAttribute("aria-pressed", String((ad.cast || []).includes(b.textContent))));
-  if (ad.style === "Hype type") p.append(h("div", { class: "field" }, h("label", { for: "bpm" }, "Beats per minute (cuts land on the beat)"),
-    h("input", { type: "number", id: "bpm", min: 60, max: 200, value: ad.bpm || 120, on: { change: (e) => { ad.bpm = +e.target.value || 0; changed(false); } } })));
-  const ready = ad.status === "ready";
-  p.append(h("div", { class: "row" },
-    h("span", { class: "status" + (ready ? " ready" : "") }, ready ? "Ready to film" : "Draft"),
-    h("button", { type: "button", class: "btn primary", disabled: ready, on: { click: () => { ad.status = "ready"; dirty = true; renderAdPanel(); save(); } } }, ready ? "Marked ready" : "Mark ready to film")),
-    h("p", { class: "hint" }, ready ? "Tell Claude: \u201cfilm my ad\u201d. Claude runs the full brain check first and shows you every problem." : "Changes save by themselves."));
-}
-
-// ---------- the scenes ----------
-function sceneCard(f, i) {
-  const set = (k, v, rerender) => { if (v === undefined || v === "") delete ad.frames[i][k]; else ad.frames[i][k] = v; changed(rerender); };
-  const card = h("article", { class: "scene", "data-n": f.n });
-  card.append(h("div", { class: "shead" },
-    h("span", { class: "num" }, `Scene ${f.n}`),
-    h("span", { class: "span" }, `${f.start.toFixed(1)}–${f.end.toFixed(1)} s`),
-    h("span", { class: "grow" }),
-    h("button", { type: "button", class: "icon", title: "Play from here", "aria-label": `Play scene ${f.n}`, on: { click: () => { seek(f.start + 0.01); if (!playing) playBtn.click(); } } }, "▶"),
-    h("button", { type: "button", class: "icon", title: "Move up", "aria-label": "Move up", disabled: i === 0, on: { click: () => { const a = ad.frames; [a[i - 1], a[i]] = [a[i], a[i - 1]]; changed(); } } }, "↑"),
-    h("button", { type: "button", class: "icon", title: "Move down", "aria-label": "Move down", disabled: i === ad.frames.length - 1, on: { click: () => { const a = ad.frames; [a[i + 1], a[i]] = [a[i], a[i + 1]]; changed(); } } }, "↓"),
-    h("button", { type: "button", class: "icon", title: "Copy scene", "aria-label": "Copy scene", on: { click: () => { ad.frames.splice(i + 1, 0, JSON.parse(JSON.stringify(f))); changed(); } } }, "⧉"),
-    h("button", { type: "button", class: "icon", title: "Delete scene", "aria-label": "Delete scene", disabled: ad.frames.length < 2, on: { click: () => { ad.frames.splice(i, 1); changed(); } } }, "✕")));
-  const ta = h("textarea", { id: `w${i}`, rows: 2, placeholder: f.endCard ? "Optional line on the end card" : "One line, like: Remember the night.", on: { input: (e) => { ad.frames[i].words = e.target.value; changed(false); } } });
-  ta.value = f.words || "";
-  card.append(h("div", { class: "field" }, h("label", { for: `w${i}` }, "Words on screen"), ta));
-  const secs = h("input", { type: "number", id: `s${i}`, min: 0.5, max: 20, step: 0.5, value: f.dur, on: { change: (e) => set("dur", Math.max(0.5, +e.target.value || 2), true) } });
-  card.append(h("div", { class: "row" },
-    h("div", { class: "field" }, h("label", { for: `s${i}` }, "Seconds"),
-      h("div", { class: "secs" },
-        h("button", { type: "button", class: "icon", "aria-label": "Shorter", on: { click: () => set("dur", Math.max(0.5, f.dur - 0.5), true) } }, "−"), secs,
-        h("button", { type: "button", class: "icon", "aria-label": "Longer", on: { click: () => set("dur", f.dur + 0.5, true) } }, "+"))),
-    h("label", { class: "toggle" }, h("input", { type: "checkbox", checked: !!f.endCard, on: { change: (e) => set("endCard", e.target.checked || undefined, true) } }), "End card (logo and link)"),
-    h("label", { class: "toggle" }, h("input", { type: "checkbox", checked: !!(f.sound || "").trim(), on: { change: (e) => set("sound", e.target.checked ? "whoosh" : "", false) } }), "Sound effect")));
-  // The picture: a screenshot or the mascots, depending on the style.
-  const kind = PICTURE[ad.style];
-  if (kind === "screen" && !f.endCard) {
-    const screens = BRAND.screens || [];
-    card.append(h("div", { class: "field" }, h("span", { class: "lbl" }, "Picture"), h("div", { class: "thumbs" },
-      h("button", { type: "button", class: "thumb none", "aria-pressed": String(!f.screen), on: { click: () => { set("screen", undefined, true); } } }, "None"),
-      screens.map((p) => h("button", { type: "button", class: "thumb", title: p.split("/").pop(), "aria-label": p.split("/").pop(), "aria-pressed": String(f.screen === p),
-        on: { click: () => { ad.frames[i].picture = "Screen: " + p.split("/").pop(); set("screen", p, true); } } }, h("img", { src: abs(p), alt: "", loading: "lazy" }))))));
-  }
-  if (kind === "mascots" && !f.endCard) {
-    card.append(h("div", { class: "field" }, h("span", { class: "lbl" }, "Who is in this panel"),
-      chipRow(BRAND.mascots, null, (v) => { const m = new Set(f.mascots || []); m.has(v) ? m.delete(v) : m.add(v); ad.frames[i].picture = "Mascots: " + [...m].join(", "); set("mascots", [...m], true); })));
-    card.querySelectorAll(".field:last-child .chip").forEach((b) => b.setAttribute("aria-pressed", String((f.mascots || []).includes(b.textContent))));
-  }
-  // Everything else about this one scene.
-  const looks = Object.keys(BRAND.looks);
-  const more = h("details", { class: "more" }, h("summary", {}, "Customize this scene"), h("div", { class: "grid2" },
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Look"), chipRow(["Same as ad", ...looks], f.look || "Same as ad", (v) => set("look", v === "Same as ad" ? undefined : v, true), (x) => x, (x) => x === "Same as ad" ? "" : swatch(x))),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Light or dark"), chipRow(["Same as ad", "dark", "light"], f.mode || "Same as ad", (v) => set("mode", v === "Same as ad" ? undefined : v, true), (x) => x === "dark" ? "Dark" : x === "light" ? "Light" : x)),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Text size"), chipRow(SIZES, f.textSize || "M", (v) => set("textSize", v === "M" ? undefined : v, true))),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Text spot"), chipRow(SPOTS, f.textSpot || "", (v) => set("textSpot", v, true), (x) => x[0].toUpperCase() + x.slice(1))),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Text color"), chipRow(["text", "accent"], f.textColor || "text", (v) => set("textColor", v === "text" ? undefined : v, true), (x) => x === "text" ? "Plain" : "Accent")),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "How the words come in"), chipRow(MOTIONS, f.motion || "", (v) => set("motion", v, true), (x) => ({ slide: "Slide up", pop: "Pop", fade: "Fade", type: "Type on", none: "Just appear" })[x])),
-    h("div", { class: "field" }, h("span", { class: "lbl" }, "Speed"), chipRow(["Same as ad", ...SPEEDS], f.speed || "Same as ad", (v) => set("speed", v === "Same as ad" ? undefined : v, true)))));
-  more.open = !!openMore[f.n];
-  more.addEventListener("toggle", () => { openMore[f.n] = more.open; });
-  card.append(more, h("div", { class: "probs" }));
-  return card;
-}
-const openMore = {};
-function refreshProblems() {
-  document.querySelectorAll(".scene").forEach((el) => {
-    const f = ad.frames[+el.dataset.n - 1]; if (!f) return;
-    const box = $(".probs", el), ps = problems(f);
-    box.replaceChildren(...(ps.length ? ps.map((p) => h("div", { class: "prob" }, p)) : [h("div", { class: "okline" }, "Looks good")]));
-    $(".span", el).textContent = `${f.start.toFixed(1)}–${f.end.toFixed(1)} s`;
-  });
-}
-function renderScenes() {
-  const box = $("#scenes"); box.replaceChildren();
-  if (!ad) { box.append(h("div", { class: "empty" }, "Pick an ad, or start a new one.")); return; }
-  ad.frames.forEach((f, i) => box.append(sceneCard(f, i)));
-  box.append(h("div", { class: "row" },
-    h("button", { type: "button", class: "btn", on: { click: () => { const lastF = ad.frames[ad.frames.length - 1] || {}; const at = lastF.endCard ? ad.frames.length - 1 : ad.frames.length; ad.frames.splice(at, 0, { words: "", dur: 3, sound: "whoosh" }); changed(); } } }, "+ Add a scene"),
-    h("span", { class: "hint" }, `${ad.frames.length} scenes · ${ad.length.toFixed(1)} s`)));
-  refreshProblems();
-}
-
-// ---------- ads: pick, new ----------
-function fillPicker() {
-  const pick = $("#adPick"); pick.replaceChildren();
-  for (const a of ads) pick.append(h("option", { value: a.id, selected: ad && a.id === ad.id }, a.title || a.id));
-}
-function open(a) {
-  ad = normalize(JSON.parse(JSON.stringify(a)));
-  t = Math.min(1, ad.length / 2); fillPicker(); renderAdPanel(); renderScenes(); scrub.max = ad.length; seek(t); build();
-}
-$("#adPick").addEventListener("change", (e) => { save(); const a = ads.find((x) => x.id === e.target.value); if (a) open(a); });
-$("#newBtn").addEventListener("click", () => {
-  const ex = BRAND.examples.find((x) => x.style === (ad && ad.style)) || BRAND.examples[0];
-  const fresh = normalize(JSON.parse(JSON.stringify(ex)));
-  fresh.id = "ad-" + Date.now().toString(36); fresh.title = "New " + fresh.style.toLowerCase(); fresh.status = "draft"; fresh.brand = brandId; fresh.createdAt = Date.now();
-  ads.push(fresh); open(fresh); dirty = true; save();
+$("#go").addEventListener("click", async () => {
+  const ask = $("#ask").value.trim(), msg = $("#goMsg");
+  if (!ask) { say(msg, "Write what you want first.", "bad"); return; }
+  if (!db) { say(msg, "Open this page signed in to send ads to Claude.", "bad"); return; }
+  const id = "ad-" + Date.now().toString(36);
+  const doc = { brand: brand.id, ask, length: parseInt(len, 10), shape, status: "asked", createdAt: Date.now(), changes: [] };
+  $("#go").disabled = true; say(msg, "Sending…");
+  // The click is the gesture sendToClaude needs, so start it before the save finishes.
+  const sent = tellClaude($("#go"), `Make this ad now: requests/${id} (${brand.name}, ${len}, ${shape}). "${ask}"`);
+  try { await db.doc(`requests/${id}`).set(doc); } catch (e) { say(msg, "Could not save: " + ((e && e.message) || "try again"), "bad"); $("#go").disabled = false; return; }
+  const r = await sent;
+  $("#go").disabled = false;
+  if (r === "sent") { say(msg, "Sent. Claude is starting on it now.", "good"); $("#ask").value = ""; check(); }
+  else say(msg, notSent(r), "bad");
 });
 
-// ---------- start ----------
+function renderList() {
+  const list = $("#list");
+  const mine = ads.filter((a) => a.brand === (brand && brand.id)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  if (!mine.length) { list.replaceChildren(h("div", { class: "empty" }, db ? "No ads yet. Describe one above." : "Open this page signed in to see your ads.")); return; }
+  list.replaceChildren(...mine.map(card));
+}
+function card(a) {
+  const el = h("article", { class: "ad" });
+  const st = a.status || "asked";
+  el.append(h("div", { class: "row" },
+    h("span", { class: "status " + (st === "done" || st === "approved" ? "done" : st === "making" ? "making" : "") }, STATUS[st] || st),
+    h("span", { class: "meta" }, `${a.length || ""} s · ${a.shape || "9:16"} · ${new Date(a.createdAt || 0).toLocaleDateString()}`)));
+  el.append(h("p", { class: "ask" }, a.ask || ""));
+  for (const c of a.changes || []) el.append(h("p", { class: "note" }, "Change: " + c.text));
+  if (a.note) el.append(h("p", { class: "note" }, "Claude: " + a.note));
+  if (a.video && a.video.url) el.append(h("video", { src: a.video.url, controls: true, playsinline: true, preload: "metadata" }));
+  const probs = a.problems || [];
+  if (a.video && probs.length) {
+    el.append(h("span", { class: "lbl" }, `The brand check found ${probs.length} problem${probs.length > 1 ? "s" : ""}`));
+    for (const p of probs) el.append(h("p", { class: "prob" }, p));
+  } else if (a.video) el.append(h("p", { class: "msg good" }, "The brand check found no problems."));
+  if (a.video) el.append(changeBox(a));
+  return el;
+}
+function changeBox(a) {
+  const box = h("div", { class: "change panel" });
+  const ta = h("textarea", { "aria-label": "What to change", placeholder: "What should change? Claude remakes it." });
+  const msg = h("p", { class: "msg" });
+  const send = h("button", { type: "button", class: "btn", on: { click: async () => {
+    const text = ta.value.trim(); if (!text) { say(msg, "Write what to change first.", "bad"); return; }
+    send.disabled = true;
+    const sent = tellClaude(send, `Change this ad now: requests/${a.id}. "${text}"`);
+    try { await db.doc(`requests/${a.id}`).update({ status: "asked", changes: (a.changes || []).concat([{ at: Date.now(), text }]) }); }
+    catch (e) { say(msg, "Could not save: " + ((e && e.message) || "try again"), "bad"); send.disabled = false; return; }
+    const r = await sent; send.disabled = false;
+    if (r === "sent") say(msg, "Sent. Claude is remaking it.", "good"); else say(msg, notSent(r), "bad");
+  } } }, "Remake with this change");
+  const ok = h("button", { type: "button", class: "btn small", disabled: a.status === "approved", on: { click: async () => {
+    try { await db.doc(`requests/${a.id}`).update({ status: "approved", approvedAt: Date.now() }); } catch (e) { say(msg, "Could not save.", "bad"); }
+  } } }, a.status === "approved" ? "Approved" : "I like it");
+  box.append(ta, h("div", { class: "row" }, send, ok), msg);
+  return box;
+}
+
+function pickBrand(id) { brand = BRANDS.find((b) => b.id === id) || BRANDS[0]; check(); renderList(); }
+$("#brandPick").addEventListener("change", (e) => pickBrand(e.target.value));
+
 (async () => {
-  try {
-    BRAND = JSON.parse(await text(`brand/${brandId}/brand.json`));
-  } catch (e) { setSave("Could not load the brand files", true); return; }
-  // The examples are always there, so the editor opens on a real ad even before anything is saved.
-  ads = BRAND.examples.map((x, i) => Object.assign({ id: "example-" + (STYLES[x.style] || i), status: "draft", brand: brandId }, x));
-  open(ads[0]);
-  setSave("Not saved yet");
-  const timer = setTimeout(() => setSave("Saving is off here: open the page signed in", true), 10000);
-  db = window.claude && await window.claude.use("db");
+  try { BRANDS = await (await fetch("brands.json")).json(); } catch (e) { BRANDS = []; }
+  $("#brandPick").replaceChildren(...BRANDS.map((b) => h("option", { value: b.id }, b.name)));
+  pickBrand(BRANDS[0] && BRANDS[0].id);
+  const cl = window.claude && typeof window.claude.use === "function" ? window.claude : null;
+  if (!cl) { renderList(); return; }
+  cl.use("comments").then((x) => { comments = x || null; }).catch(() => {});
+  const timer = setTimeout(() => { if (!db) $("#list").replaceChildren(h("div", { class: "empty" }, "Could not load your ads. Open this page signed in.")); }, 10000);
+  try { db = await cl.use("db"); } catch (e) { db = null; }
   clearTimeout(timer);
-  if (!db) { setSave("Saving is off here: open the page signed in", true); return; }
-  try {
-    const snap = await db.collection("storyboards").get();
-    const saved = snap.docs.filter((d) => d.exists).map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => (x.brand || brandId) === brandId);
-    for (const s of saved) { const k = ads.findIndex((x) => x.id === s.id); k >= 0 ? (ads[k] = s) : ads.push(s); }
-    ads.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-    open(ads[0]);
-    setSave(saved.length ? "Saved" : "Not saved yet");
-  } catch (e) { setSave("Could not read saved ads: " + (e && e.message || ""), true); }
+  if (!db) { renderList(); return; }
+  db.collection("requests").onSnapshot((snap) => {
+    ads = snap.docs.filter((d) => d.exists).map((d) => Object.assign({ id: d.id }, d.data()));
+    renderList();
+  }, () => $("#list").replaceChildren(h("div", { class: "empty" }, "Could not load your ads.")));
 })();
 })();
 </script>

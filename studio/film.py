@@ -22,6 +22,22 @@ STYLES = {"App tour": "app-tour", "Mascot story": "mascot-story", "Hype type": "
 SFX = ROOT / "assets" / "sfx" / "whoosh.mp3"
 
 
+CUSTOM_RUNTIME = "s4f:runtime"  # a custom scene loads the runtime with <script src="s4f:runtime"></script>
+
+
+def template_file(sb: dict) -> Path:
+    """The page to film: a style's template, or the scene Claude wrote for this one ad (sb["template"])."""
+    if not sb.get("template"):
+        return style_dir(sb["style"]) / "template.html"
+    src = Path(sb["template"]).expanduser().resolve()
+    if not src.exists():
+        sys.exit(f"The custom scene {src} does not exist.")
+    html = src.read_text(encoding="utf-8").replace(CUSTOM_RUNTIME, (ADS / "runtime.js").resolve().as_uri())
+    copy = src.with_name("_film_" + src.name)
+    copy.write_text(html, encoding="utf-8")
+    return copy
+
+
 def style_dir(style: str) -> Path:
     key = STYLES.get(style, style)
     d = ADS / key
@@ -66,7 +82,7 @@ def _page(pw, sb: dict, brain: Brain):
     page.add_init_script("window.SB = %s; window.BRAND = %s;" % (json.dumps(sb), json.dumps(brand_data(brain, sb))))
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
-    page.goto((style_dir(sb["style"]) / "template.html").resolve().as_uri())
+    page.goto(template_file(sb).resolve().as_uri())
     page.evaluate("window.ready")
     if errors:
         sys.exit("The template failed: " + errors[0])

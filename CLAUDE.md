@@ -275,17 +275,32 @@ Each step saves to the job, and `status` says which step waits. Always pass `if_
    or the post itself). Save `learn: {at, metrics, line}` and run `python -m studio ad learn --brand <id> --job <job.json>`.
    It adds a row to `history.md`, and to `results.md` when there are numbers. Set `status: learned`. Commit the brain change.
 
-**The Ad Scene Editor** (asked for by the owner on 14 Nov 2026: "give me each scene to customize by myself just make it easy"):
+**The Ad Maker** (the owner asked on 15 Nov 2026 for one box where he says what he wants, for example "a hype kinetic typography,
+a brand launch theme of Rome, camera movements, feature the Trojan horse" or "use all 4 mascots to tell a story where ___ happens",
+and for the button to start the work by itself; it replaced the scene-by-scene editor):
 https://claude.ai/artifact/5kkQNAMdfdHW92frBjbWM4 (source `page/ad-editor/editor.html`; build with `python page/ad-editor/build.py`,
-then publish `page/ad-editor/dist/index.html` with every other file in `dist/` as `files` and `root` set to `dist/`, to that URL).
-The owner edits every scene there with a live preview drawn by the real templates: words, seconds, picture, end card, sound effect,
-and per scene the look, light or dark, text size, text spot, text color, how the words come in, and speed.
-Each ad is saved in its database as `storyboards/{id}`, already in storyboard format. "Mark ready to film" sets `status: "ready"`.
-When the owner says "film my ad", read that document with ArtifactData (`out_dir` to save it as JSON), run the brain check on it,
-show every problem, and film it once the owner agrees. The editor's own check covers only short lines, two lines, avoid words and Never say.
-Rebuild and republish the editor whenever a template, a brand's kit or its example storyboards change.
-Per-scene fields the templates read: `look`, `mode`, `textSize` (S, M, L, XL), `textSpot` (top, middle, bottom), `textColor` (text, accent, or a hex),
-`motion` (slide, pop, fade, type, none), `speed` (Calm, Normal, Hyped), `screen`, `mascots`, `endCard`, `sound`.
+then publish `page/ad-editor/dist/index.html` with `brands.json` as `files` and `root` set to `dist/`, to that URL;
+capabilities db, user, comments, assets). The page warns while he types a Never say or avoid word.
+
+"Make this ad" saves `requests/{id}` (`brand`, `ask`, `length` in seconds, `shape`, `status: "asked"`, `changes: []`) and sends a comment
+to the Claude Code session watching the page: "Make this ad now: requests/{id} ...". "Remake with this change" adds `{at, text}` to
+`changes`, sets `status: "asked"` and sends "Change this ad now: requests/{id} ...". "I like it" sets `status: "approved"` (that is not
+a post: posting still goes through an ad job and the owner's **Approve and schedule**). At the start of every session that works on ads,
+start an `ArtifactComments` watch on the page so these arrive. When one arrives, without asking first:
+1. Read the request with ArtifactData. Act only if `status` is `asked`. Set `status: "making"`.
+2. Write the ad in `jobs/ads/{id}/` (git ignores `jobs/`): `storyboard.json` with `brand`, `length`, `shape`, and `frames` listing every
+   line that appears on screen with its `start` and `end`, so the brain check sees them all. Use a style template when the ask fits one;
+   otherwise set `"style": "Custom"` and `"template": "jobs/ads/{id}/scene.html"` and write that scene: any HTML that loads the runtime
+   with `<script src="s4f:runtime"></script>`, puts words in `.words` elements inside the safe area, and draws a picture that depends only on
+   the time through `S4F.setup(draw)` (camera moves are transforms of a stage element over time). Use the brand's fonts, look colors and kit;
+   never retired kit, never a real person's picture without the owner's yes, and no claim that is not an approved fact.
+   There is no separate mascot art yet (only `assets/mascots/lineup-from-endcard.png`); say so in `note` when an ask needs it.
+3. Run the brain check and film it (`python -m studio film jobs/ads/{id}/storyboard.json --out jobs/ads/{id}/ad.mp4`). Look at stills first
+   and fix anything broken. Film even when the check finds problems: the page shows every one, in plain words, under the video.
+4. Upload the mp4 to the page's asset store (Artifact publish with `url`, `asset: true`) and update the request:
+   `video: {id, url}`, `problems: [plain sentences]`, `note` (one or two lines on what you made and anything you could not do),
+   `status: "done"`. Delete the previous video asset on a remake. Reply on the comment thread with one line and resolve it.
+If anything stops the work, set `status: "stuck"` and say why in `note`.
 
 **The styles** live in `studio/ads/<style>/`, each with a `README.md`: `app-tour`, `mascot-story`, `hype-type`, `sting` and `podcast-endcard`.
 The first four are HTML pages that `studio/film.py` films frame by frame with Playwright at the output size and encodes with ffmpeg at 30 fps.
