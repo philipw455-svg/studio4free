@@ -1,7 +1,7 @@
 """Clip studio command line. Run: python -m studio <step> --job NAME"""
 import argparse
 
-from . import buffer, doctor, fetch, plan, render, review, shots, tools, transcribe
+from . import buffer, doctor, fetch, join, plan, render, review, shots, tools, transcribe
 
 
 def nums(text):
@@ -14,6 +14,10 @@ def main():
 
     a = sub.add_parser("fetch", help="download or copy the source video")
     a.add_argument("source", help="a YouTube link, a direct file link, or a file path")
+    a.add_argument("--job", required=True)
+    a.add_argument("--out", default="source.mp4", help="the file name in the job folder, such as sources/01.mp4 for a montage clip")
+
+    a = sub.add_parser("join", help="join the parts listed in join.json into one video, for an edit job or a montage job")
     a.add_argument("--job", required=True)
 
     a = sub.add_parser("transcribe", help="write the transcript with word times")
@@ -75,7 +79,9 @@ def main():
     if getattr(x, "buffer", ""):
         buffer.use_login(x.buffer)
     if x.step == "fetch":
-        fetch.fetch(x.job, x.source)
+        fetch.fetch(x.job, x.source, x.out)
+    elif x.step == "join":
+        join.join(x.job)
     elif x.step == "transcribe":
         transcribe.transcribe(x.job, x.model, x.language)
     elif x.step == "cut":

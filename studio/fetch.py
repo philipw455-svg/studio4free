@@ -1,4 +1,4 @@
-"""Step 1: get the source video into the job folder as source.mp4."""
+"""Step 1: get the source video into the job folder as source.mp4. A montage clip goes to sources/NN.mp4."""
 import shutil
 import sys
 import urllib.request
@@ -7,6 +7,8 @@ from pathlib import Path
 from .common import job_dir, probe, run, write_json
 
 YT_HOSTS = ("youtube.com", "youtu.be")
+# A path can come from the page, so the fetch step opens video files only.
+VIDEO = (".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v")
 
 BLOCKED = """YouTube refused this download and asked for a sign-in check.
 YouTube does this to cloud servers. Do not try to get around the check.
@@ -27,12 +29,17 @@ def channel_of(link: str) -> dict:
         return {}
 
 
-def fetch(job: str, source: str) -> Path:
+def fetch(job: str, source: str, name: str = "source.mp4") -> Path:
     d = job_dir(job)
-    out = d / "source.mp4"
+    out = (d / name).resolve()
+    if d.resolve() not in out.parents or out.suffix.lower() != ".mp4":
+        sys.exit(f"--out must be an .mp4 name inside the job folder, such as sources/01.mp4. It was: {name}")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    source = source.strip().strip('"')
     who = channel_of(source) if any(h in source for h in YT_HOSTS) else {}
     if who:
-        write_json(d / "channel.json", who)
+        if name == "source.mp4":
+            write_json(d / "channel.json", who)
         print(f"Source channel: {who['channel']} ({who['credit']})")
     if any(h in source for h in YT_HOSTS):
         if not shutil.which("yt-dlp"):
@@ -53,13 +60,16 @@ def fetch(job: str, source: str) -> Path:
             shutil.copyfileobj(r, f)
     else:
         src = Path(source).expanduser()
-        if not src.exists():
+        if not src.is_file():
             sys.exit(f"No file at {src}")
+        if src.suffix.lower() not in VIDEO:
+            sys.exit(f"{src.name} is not a video file. The fetch step takes {', '.join(VIDEO)}.")
         if src.suffix.lower() == ".mp4":
             shutil.copyfile(src, out)
         else:
             run(["ffmpeg", "-y", "-i", src, "-c:v", "libx264", "-crf", "18", "-c:a", "aac", out])
     info = probe(out)
-    write_json(d / "source.json", {"source": source, **who, **info})
+    if name == "source.mp4":
+        write_json(d / "source.json", {"source": source, **who, **info})
     print(f"Saved {out} ({info['width']}x{info['height']}, {info['duration']:.0f} seconds)")
     return out

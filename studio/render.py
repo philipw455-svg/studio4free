@@ -60,7 +60,7 @@ def look_style(look) -> dict:
     name = LOOKS.get(look.get("overlay")) if isinstance(look.get("overlay"), str) else None
     if name is not None:
         out["overlay"] = name
-        opts = options(name, look.get("opts"))
+        opts = options(name, look.get("opts", look.get("ovs")))   # the page of 14 Nov 2026 saves the options as "ovs"
         # Two options are older style keys. They stay under those keys, so the same key written by hand still wins.
         if "hold" in opts:
             out["title_seconds"] = float(opts.pop("hold"))

@@ -1,9 +1,11 @@
 # studio4free
 
-Studio4Free turns a long YouTube video into short vertical clips and schedules them in Buffer.
+Studio4Free makes finished video for creators and schedules it in Buffer. It has four paths:
+YouTube video to clips, your own video to clips, unedited video to edited video, and game clips to montage.
 
-- `page/studio.html` is the phone-first page. You sign in with an 8-digit studio number and set up your studio in five steps:
-  Channels, Style, Motion, Brand and Times. Then you start jobs, pick moments, change clips and see the queue and the schedule.
+- `page/studio.html` is the phone-first page. It is built from `page/src/` with `python page/build.py`.
+  You sign in with a studio number and set up your studio in five steps: Channels, Style, Motion, Brand and Times.
+  Then you start a job on one of the four paths, pick moments, change clips and see the queue and the schedule.
 - `studio/` is the program a Claude Code session runs: fetch, transcribe, cut, check, schedule, post.
 - `app/` is a small Windows launcher that opens the page in its own window.
 - `tests/` holds the tests. Run them with `python -B -m unittest discover -s tests`.
@@ -31,6 +33,7 @@ python -m studio fix --job demo "4450.22|old|new"           # correct a misheard
 python -m studio shots --job demo                           # one frame of every camera shot, to set the frame by hand
 python -m studio cut --job demo                             # render the clips. --only 2,5 cuts those again over the same files
 python -m studio sheet --job demo                           # frames of every finished clip, to check by eye
+python -m studio join --job demo                            # an edit or a montage: join the parts in join.json into one video
 python -m studio texts --job demo                           # words and titles for the rules check
 python -m studio schedule --job demo --start 2026-11-20     # give each clip a publish time
 python -m studio channels                                   # the Buffer channels: id, service and name
