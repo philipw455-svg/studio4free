@@ -1,7 +1,7 @@
 """Clip studio command line. Run: python -m studio <step> --job NAME"""
 import argparse
 
-from . import buffer, fetch, plan, render, review, shots, tools, transcribe
+from . import buffer, doctor, fetch, plan, render, review, shots, tools, transcribe
 
 
 def nums(text):
@@ -53,16 +53,27 @@ def main():
     a = sub.add_parser("texts", help="collect each clip's words and titles for the rules check")
     a.add_argument("--job", required=True)
 
-    sub.add_parser("channels", help="list the Buffer channels")
-    sub.add_parser("queue", help="list every Buffer post with its status and live link")
+    a = sub.add_parser("doctor", help="check what is installed, and say which features cannot run")
+    a.add_argument("--json", action="store_true", help='print only {"ok", "missing", "cannot"} as JSON')
 
-    a = sub.add_parser("post", help="create the Buffer posts from posting.json")
+    login = argparse.ArgumentParser(add_help=False)
+    login.add_argument("--buffer", default="", type=str.strip, metavar="LABEL",
+                       help="the account's Buffer login. The key then comes from BUFFER_API_KEY_<LABEL>")
+
+    sub.add_parser("channels", parents=[login], help="list the Buffer channels: id, service and name")
+    sub.add_parser("queue", parents=[login], help="list every Buffer post with its status and live link")
+
+    a = sub.add_parser("post", parents=[login], help="create the Buffer posts from posting.json")
     a.add_argument("--job", required=True)
     a.add_argument("--services", default="youtube,instagram")
+    a.add_argument("--channels", default="", metavar="ID,ID",
+                   help="post only to the Buffer channels with these ids, one channel per service")
     a.add_argument("--draft", action="store_true", help="save as drafts, not scheduled posts")
     a.add_argument("--only", default="")
 
     x = p.parse_args()
+    if getattr(x, "buffer", ""):
+        buffer.use_login(x.buffer)
     if x.step == "fetch":
         fetch.fetch(x.job, x.source)
     elif x.step == "transcribe":
@@ -81,6 +92,8 @@ def main():
         plan.schedule(x.job, x.start, x.times, x.tz, x.order, x.flash_days)
     elif x.step == "texts":
         review.texts(x.job)
+    elif x.step == "doctor":
+        doctor.doctor(x.json)
     elif x.step == "queue":
         for p in buffer.queue():
             first = (p["text"] or "").split("\n")[0][:60]
@@ -88,9 +101,11 @@ def main():
             print(f"{p['id']}  {p['channelService']:<9} {p['status']:<9} {p['sentAt'] or p['dueAt'] or '-':<24} {p.get('externalLink') or '-'}  {first}{err}")
     elif x.step == "channels":
         for c in buffer.channels():
-            print(f"{c['service']:<10} {c.get('displayName') or c['name']}  ({c['id']})")
+            # Both names when Buffer has two, so a session can match the channel name saved on the page.
+            names = " / ".join(dict.fromkeys(n for n in (c.get("displayName"), c.get("name")) if n))
+            print(f"{c['id']}  {c['service']:<10} {names}")
     elif x.step == "post":
-        buffer.post(x.job, x.services, x.draft, nums(x.only))
+        buffer.post(x.job, x.services, x.draft, nums(x.only), x.channels)
 
 
 if __name__ == "__main__":

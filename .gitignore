@@ -5,3 +5,5 @@ __pycache__/
 page/overlays-*
 stock/
 .DS_Store
+app/*.exe
+app/*.ico

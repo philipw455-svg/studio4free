@@ -4,10 +4,14 @@ Each clip gets: a 9:16 frame, a title banner, word-by-word captions,
 an optional brand line, an optional zoom, and muted words.
 """
 import re
+import subprocess
 import sys
 
 from .common import FONTS, ROOT, has_audio, job_dir, probe, read_json, run, write_json
+from .overlays import NAMES, SAFE, colour, options
 
+# The look names the page saves, and the overlay each one stands for. "First banner" is the layout with no overlay.
+LOOKS = {**{label: key for key, label in NAMES.items()}, "First banner": ""}
 SIZES = {"9:16": (1080, 1920), "4:5": (1080, 1350), "1:1": (1080, 1080), "16:9": (1920, 1080)}
 STRONG = {"fuck", "fucking", "fucked", "fucker", "motherfucker", "shit", "shitty", "bullshit", "bitch",
           "bitches", "asshole", "dick", "pussy", "cunt", "goddamn", "bastard"}
@@ -35,12 +39,48 @@ DEFAULT_STYLE = {
     "caption_words": 3,
     "caption_upper": True,
     "font": "Montserrat Black",
-    "accent": "#FFE300",      # colour of the word being spoken, and of the bar under the title
+    "accent": "#FFE300",      # colour of the bar under the title and of the brand tag, and of the spoken word when cap_colour is not set
+    # "look": the job's look object, as the page saved it. look_style() turns it into the keys in this list. A key written here by hand wins.
+    # "opts": the options of the overlay, with the page's key names. overlays.OPTIONS lists them.
+    # "cap_colour": colour of the word being spoken. "cap_y": where the captions rest, in percent of the frame height (16 to 63).
+    # "banner_image": the studio's own picture, drawn across the top in place of the title. "ending_video": plays after the clip and the flash.
     "banner": "#0A090C",      # title banner colour
     "brand": "appnoxi.com",   # text beside the mark in the banner. Empty for none.
     "logo": "assets/brand/mark.png",  # round mark in the banner. Empty for none.
     "language": "Mute it",    # Mute it | Leave it in
 }
+
+
+def look_style(look) -> dict:
+    """Turn the look a job saved on the page into the style keys the renderer uses.
+    A value that is missing or not known is left out, so the default applies."""
+    if not isinstance(look, dict):
+        return {}
+    out = {}
+    name = LOOKS.get(look.get("overlay")) if isinstance(look.get("overlay"), str) else None
+    if name is not None:
+        out["overlay"] = name
+        opts = options(name, look.get("opts"))
+        # Two options are older style keys. They stay under those keys, so the same key written by hand still wins.
+        if "hold" in opts:
+            out["title_seconds"] = float(opts.pop("hold"))
+        if name == "banner-safe" and "bg" in opts:
+            out["banner"] = opts.pop("bg")
+        out["opts"] = opts
+    if colour(look.get("capColor")):
+        out["cap_colour"] = colour(look["capColor"])
+    y = look.get("capY")
+    if isinstance(y, (int, float)) and not isinstance(y, bool):
+        out["cap_y"] = float(y)
+    if look.get("zoom") in ("Smooth", "Slow creep", "None"):
+        out["zoom"] = look["zoom"] if look["zoom"] != "None" else "none"
+    if look.get("captions") in ("Yes", "No"):
+        out["captions"] = look["captions"] == "Yes"
+    if look.get("language") in ("Mute it", "Leave it in"):
+        out["language"] = look["language"]
+    if isinstance(look.get("brand"), str):
+        out["brand"] = look["brand"].strip()
+    return out
 
 
 def ass_colour(hex_colour: str, alpha: int = 0) -> str:
@@ -84,13 +124,71 @@ def chunks(words: list, size: int, limit: int = 16, fits=None) -> list:
             cur = []
         cur.append(w)
         gap = words[i + 1]["s"] - w["e"] if i + 1 < len(words) else 9
-        ends = bool(re.search(r"[.!?]$", w["w"]))
+        ends = bool(re.search(r"[.!?,]$", w["w"]))   # the end of a sentence, or a comma
         if len(cur) >= size or gap > 0.6 or ends or sum(len(x["w"]) for x in cur) >= limit:
             groups.append(cur)
             cur = []
     if cur:
         groups.append(cur)
     return groups
+
+
+def caption_lines(words: list, size: int = 3, limit: int = 16, fits=None) -> list:
+    """The smart caption rule, as [{"s": start, "e": end, "words": [...]}].
+    A line holds at most 3 words. It breaks at a pause in speech, at the end of a sentence and at a comma.
+    It appears 0.1 second before its first word and stays until the next line appears.
+    The last line stays 0.35 second after its last word."""
+    groups = chunks(words, max(1, min(3, int(size))), limit, fits)
+    starts = [max(0.0, g[0]["s"] - 0.1) for g in groups]
+    return [{"s": s, "e": starts[i + 1] if i + 1 < len(groups) else g[-1]["e"] + 0.35, "words": g}
+            for i, (g, s) in enumerate(zip(groups, starts))]
+
+
+def clear_spot(y: float, half: float, span: tuple, faces: list, fixed: list = (), lo: float = SAFE["top"],
+               hi: float = SAFE["bottom"], margin: float = 24):
+    """The height nearest to `y`, from lo to hi, at which a caption line clears every box. None when no height does.
+    The line reaches `half` above and below its middle, and from span[0] to span[1] across the frame.
+    Boxes are (left, top, right, bottom). A face keeps `margin` pixels of air. A fixed mark, such as the brand tag, keeps none."""
+    blocked = [(b[1] - m - half, b[3] + m + half) for boxes, m in ((faces, margin), (fixed, 0)) for b in boxes
+               if b[0] - m < span[1] and b[2] + m > span[0]]
+    free = lambda c: lo <= c <= hi and not any(a < c < b for a, b in blocked)
+    if free(y):
+        return y
+    spots = [c for c in [lo, hi] + [edge for pair in blocked for edge in pair] if free(c)]
+    return min(spots, key=lambda c: abs(c - y)) if spots else None
+
+
+def place_line(t0: float, t1: float, y: float, half: float, span: tuple, samples: list, step: float, fixed: list = (),
+               lo: float = SAFE["top"], hi: float = SAFE["bottom"], margin: float = 24) -> list:
+    """Where one caption line sits while it is on screen, as [(from, to, height)].
+    `samples` is [(clip time, [face box, ...])], one every `step` seconds, with boxes in pixels of the finished frame.
+    The line rests at `y`. For the time it would touch a face it moves to the nearest clear height from lo to hi. Then it goes back.
+    This moves text only. It never moves the picture."""
+    # The sample times at which the line, at its own spot, touches a face. (From y to y, no other height is on offer.)
+    touch = [t for t, boxes in samples if t0 - step / 2 <= t <= t1 + step / 2
+             and clear_spot(y, half, span, boxes, (), y, y, margin) is None]
+    runs = []
+    for t in touch:
+        if runs and t - runs[-1][1] <= 2 * step + 1e-6:
+            runs[-1][1] = t
+        else:
+            runs.append([t, t])
+    out, at = [], t0
+    for a, b in runs:
+        a, b = max(t0, a - step), min(t1, b + step)
+        # Do not show a line at its own spot for a blink before or after it moves.
+        a, b = (at if a - at < 0.3 else a), (t1 if t1 - b < 0.3 else b)
+        faces = [box for t, boxes in samples if a - step / 2 <= t <= b + step / 2 for box in boxes]
+        spot = clear_spot(y, half, span, faces, fixed, lo, hi, margin)
+        if spot is None or b <= a:
+            continue   # no height clears the face: the line stays where it is
+        if a > at:
+            out.append((at, a, y))
+        out.append((a, b, spot))
+        at = b
+    if t1 > at or not out:
+        out.append((at, t1, y))
+    return out
 
 
 def is_strong(word: str) -> bool:
@@ -172,8 +270,11 @@ def make_overlay(path, size: tuple, title: str, style: dict, part_label: str = "
 
 
 def build_ass(style: dict, size: tuple, title: str, words: list, mutes: set, dur: float, banner: bool = False,
-              cue: str = "", look: dict | None = None, drop_at=None) -> str:
-    """`drop_at(t)` gives how many pixels lower the captions and the closing line sit at a clip time."""
+              cue: str = "", look: dict | None = None, drop_at=None, faces: list | None = None, step: float = 0.25,
+              spot: float | None = None) -> str:
+    """`drop_at(t)` gives how many pixels lower the captions and the closing line sit at a clip time.
+    `faces` is [(clip time, [face box, ...])], one sample every `step` seconds: a caption line moves aside while it would cover one.
+    `spot` is where the captions rest, in percent of the frame height. Without it they rest at the look's own spot."""
     drop_at = drop_at or (lambda t: 0)
     W, H = size
     k = H / 1920
@@ -185,6 +286,20 @@ def build_ass(style: dict, size: tuple, title: str, words: list, mutes: set, dur
     outline = int(c.get("outline", 9 if banner else 7) * k)
     shadow = int(c.get("shadow", 5 if banner else 3) * k)
     boxed = bool(c.get("box"))
+    placed = banner or bool(look) or spot is not None   # the captions carry a place of their own
+    # How far a caption line reaches above and below its middle: the Poster box of a 112 line is 143 pixels tall.
+    # Measured on rendered clips, 13 Nov 2026.
+    half = int(0.5 * cap) + outline
+    lo, hi = int(SAFE["top"] * k) + half, int(SAFE["bottom"] * k) - half
+    top = max(lo, (look or {}).get("free_top", 0) + half)   # a moved line stays under the title area
+    if not (banner or look):
+        cap_y = H - int(H * 0.215) - int(0.5 * cap)   # where the plain layout's bottom margin puts the middle of a line
+    if spot is not None:
+        # A spot the user dragged stays between 16 and 63 percent, and the whole line stays inside the safe zone.
+        rest, cap_y = cap_y, int(min(hi, max(lo, min(63.0, max(16.0, float(spot))) / 100 * H)))
+        # The closing line keeps its distance above the captions. Where that would put it on the title, it goes under them.
+        cue_y = cap_y - (rest - cue_y) if cap_y - (rest - cue_y) >= top else cap_y + abs(rest - cue_y)
+        drop_at = lambda t: 0
     banner = banner or bool(look)
     head = f"""[Script Info]
 ScriptType: v4.00+
@@ -207,34 +322,44 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         ev.append(f"Dialogue: 2,{ass_time(0)},{ass_time(dur)},Title,,0,0,0,,{clean(title)}")
     if style.get("brand") and not banner:
         ev.append(f"Dialogue: 1,{ass_time(0)},{ass_time(dur)},Brand,,0,0,0,,{clean(style['brand'])}")
-    if style.get("captions", True):
-        acc = ass_colour(style["accent"])
-        fits = None
-        if c.get("line_px"):
-            # Measure the real width, so a caption never wraps onto a second line.
+    if style.get("captions", True) not in (False, "No"):
+        acc = ass_colour(colour(style.get("cap_colour")) or style["accent"])
+        upper = style.get("caption_upper", True)
+        fits, width = None, None
+        try:
             from PIL import ImageFont
             # libass draws Montserrat at about two thirds of the style's size. Measured on rendered clips, 12 Nov 2026.
             face = ImageFont.truetype(str(FONTS / (font.replace(" ", "-") + ".ttf")), int(cap / 1.5))
-            upper = style.get("caption_upper", True)
-            fits = lambda text: face.getlength(text.upper() if upper else text) + len(text) <= c["line_px"] * W / 1080
-        groups = chunks(words, int(style.get("caption_words", 3)), int(c.get("limit", 10 if banner else 16)), fits)
-        for g, grp in enumerate(groups):
-            nxt = groups[g + 1][0]["s"] if g + 1 < len(groups) else dur
-            for i, w in enumerate(grp):
-                t0 = w["s"]
-                t1 = grp[i + 1]["s"] if i + 1 < len(grp) else min(nxt, w["e"] + 0.25)
-                if t1 - t0 < 0.04:
-                    continue
+            width = lambda text: face.getlength(text.upper() if upper else text) + len(text)
+        except (ImportError, OSError):
+            pass   # no font file to measure with: a line then counts as wide as the safe zone
+        if width and c.get("line_px"):
+            # Measure the real width, so a caption never wraps onto a second line.
+            fits = lambda text: width(text) <= c["line_px"] * W / 1080
+        fixed = (look or {}).get("fixed", [])
+        for ln in caption_lines(words, int(style.get("caption_words", 3)), int(c.get("limit", 10 if banner else 16)), fits):
+            grp = ln["words"]
+            reach = (width(" ".join(x["w"] for x in grp)) / 2 + outline + 10 * k) if width else (SAFE["right"] - SAFE["left"]) * W / 2160
+            own = cap_y + int(drop_at(ln["s"]))
+            spots = place_line(ln["s"], ln["e"], own, half, (W / 2 - reach, W / 2 + reach), faces, step, fixed, top, hi) if faces else [(ln["s"], ln["e"], own)]
+            said = grp[-1]["e"] + 0.25   # the last word keeps its colour this long, then the line waits in white
+            marks = [ln["s"]]
+            for t in sorted({w["s"] for w in grp} | {said} | {a for a, _, _ in spots}):
+                if t - marks[-1] >= 0.04 and ln["e"] - t >= 0.04:
+                    marks.append(t)
+            for t0, t1 in zip(marks, marks[1:] + [ln["e"]]):
+                now = max([j for j, x in enumerate(grp) if x["s"] <= t0 + 1e-6 and t0 < said - 1e-6], default=-1)
+                y = next((int(sy) for a, b, sy in spots if a <= t0 + 1e-6 < b), own)
                 parts = []
                 for j, x in enumerate(grp):
                     txt = clean(x["w"])
                     if id(x) in mutes:
                         txt = txt[0] + "*" * max(1, len(re.sub(r"\W", "", txt)) - 1)
-                    if style.get("caption_upper", True):
+                    if upper:
                         txt = txt.upper()
-                    parts.append(f"{{\\c{acc}}}{txt}{{\\c&HFFFFFF&}}" if j == i else txt)
-                pop = "{\\fscx108\\fscy108\\t(0,90,\\fscx100\\fscy100)}" if i == 0 else ""
-                here = f"{{\\an5\\pos({W // 2},{cap_y + int(drop_at(t0))})}}" if banner else ""
+                    parts.append(f"{{\\c{acc}}}{txt}{{\\c&HFFFFFF&}}" if j == now else txt)
+                pop = "{\\fscx108\\fscy108\\t(0,90,\\fscx100\\fscy100)}" if t0 == ln["s"] else ""
+                here = f"{{\\an5\\pos({W // 2},{y})}}" if placed or y != own else ""
                 ev.append(f"Dialogue: 3,{ass_time(t0)},{ass_time(t1)},Cap,,0,0,0,,{here}{pop}{' '.join(parts)}")
     if cue:
         t0 = max(0.0, dur - 2.6)
@@ -385,8 +510,33 @@ def focus_expr(focus) -> str:
     return expr
 
 
-def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) -> dict:
-    style = {**style, **clip.get("style", {})}
+def face_samples(src, start: float, dur: float, picture: str, size: tuple, fps: float = 4.0):
+    """Find the faces in the framed picture with one extra pass: the same crop, focus, zoom and lift as the clip, with no text,
+    at a few frames a second and a small size. Returns [(clip time, [(left, top, right, bottom), ...])] in pixels of the
+    finished frame, or None when the pass fails. It only looks at the picture. Nothing here may move, crop or zoom it."""
+    from . import faces
+    W, H = size
+    sc = min(faces.IN_W / W, faces.IN_H / H)
+    w, h = even(W * sc), even(H * sc)
+    p = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", str(src), "-an", "-filter_complex",
+                        f"{picture},fps={fps},scale={w}:{h},pad={faces.IN_W}:{faces.IN_H}:0:0[fc]", "-map", "[fc]",
+                        "-pix_fmt", "rgb24", "-f", "rawvideo", "-"], capture_output=True)
+    if p.returncode:
+        return None
+    out = []
+    for i, found in enumerate(faces.find(p.stdout)):
+        boxes = [(f[0] * faces.IN_W / w * W, f[1] * faces.IN_H / h * H, f[2] * faces.IN_W / w * W, f[3] * faces.IN_H / h * H) for f in found]
+        # Keep what has the size and the shape of a face: at least 4 percent of the frame wide, and no flatter or taller than a head.
+        out.append((i / fps, [b for b in boxes if b[2] - b[0] >= 0.04 * W and 0.8 <= (b[3] - b[1]) / (b[2] - b[0]) <= 2.2]))
+    return out
+
+
+def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict, check_faces: bool = True) -> dict:
+    own = clip.get("style", {})
+    style = {**style, **look_style(own.get("look")), **own}
+    ending = ROOT / str(style["ending_video"]) if style.get("ending_video") else None
+    if ending and not ending.exists():
+        sys.exit(f"The ending video is missing: {style['ending_video']}")
     W, H = SIZES.get(style["aspect"], SIZES["9:16"])
     start, end = float(clip["start"]), float(clip["end"])
     dur = round(end - start, 3)
@@ -454,17 +604,26 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
             region = (vx, vt, vw, vh)
             sc = max(vw / sw, vh / sh)
             bw, bh2 = even(sw * sc + 1), even(sh * sc + 1)
-            video = (zoomed(bw, bh2, z, vw, vh, "0.5", "0.5")
-                     + f",pad={W}:{H}:{vx}:{vt}:0x{bg.lstrip('#')},setsar=1[vb];"
-                     f"[vb][1:v]overlay=0:0[v0]")
+            picture = zoomed(bw, bh2, z, vw, vh, "0.5", "0.5") + f",pad={W}:{H}:{vx}:{vt}:0x{bg.lstrip('#')},setsar=1"
         else:
             top, rh = (v[1], v[2]) if v[0] == "region" else (0, H)
             region = (0, top, W, rh)
             cover = max(W / sw, rh / sh)
             bw, bh2 = even(sw * cover + 1), even(sh * cover + 1)
-            video = (window(bw, bh2, W, rh, top) + f",pad={W}:{H}:0:{top}:black,setsar=1[vb];"
-                     f"[vb][1:v]overlay=0:0[v0]")
+            picture = window(bw, bh2, W, rh, top) + f",pad={W}:{H}:0:{top}:black,setsar=1"
+        video = picture + "[vb];[vb][1:v]overlay=0:0[v0]"
         idx = 2
+        if look.get("blur"):
+            # Glass: blur the video behind the card. The mask keeps the blur inside the card's corners.
+            g = look["blur"]
+            mp = out_dir / f"{stem}-mask.png"
+            g["mask"].save(mp)
+            temps.append(mp)
+            extra += ["-i", mp]
+            bx, by, gw, gh = g["box"]
+            video = video.replace("[vb][1:v]", f"[vb]split[gm][gc];[gc]crop={gw}:{gh}:{bx}:{by},gblur=sigma={g['sigma']}[gb];"
+                                  f"[gb][{idx}:v]alphamerge[gk];[gm][gk]overlay={bx}:{by}[gv];[gv][1:v]")
+            idx += 1
         if look.get("intro"):
             # The opening title: shown for a moment, then faded out.
             ip = out_dir / f"{stem}-intro.png"
@@ -497,19 +656,39 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
         region = (0, bh, W, rh)
         cover = max(W / sw, rh / sh)
         bw, bh2 = even(sw * cover + 1), even(sh * cover + 1)
-        video = (window(bw, bh2, W, rh, bh) + f",pad={W}:{H}:0:{bh}:black,setsar=1[vb];"
-                 f"[vb][1:v]overlay=0:0[v0]")
+        picture = window(bw, bh2, W, rh, bh) + f",pad={W}:{H}:0:{bh}:black,setsar=1"
+        video = picture + "[vb];[vb][1:v]overlay=0:0[v0]"
     elif style.get("fit") == "crop" or sw / sh <= W / H + 0.01:
         cover = max(W / sw, H / sh)
         bw, bh = even(sw * cover + 1), even(sh * cover + 1)
-        video = window(bw, bh, W, H, 0) + ",setsar=1[v0]"
+        picture = window(bw, bh, W, H, 0) + ",setsar=1"
+        video = picture + "[v0]"
     else:
         fh = even(W * sh / sw)
-        video = (zoomed(W, fh, z, W, fh, "0.5", "0.5") + "[fg];"
-                 f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=28:4,eq=brightness=-0.22:saturation=0.8[bg];"
-                 f"[bg][fg]overlay=0:(H-h)/2,setsar=1[v0]")
+        picture = (zoomed(W, fh, z, W, fh, "0.5", "0.5") + "[fg];"
+                   f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=28:4,eq=brightness=-0.22:saturation=0.8[bg];"
+                   f"[bg][fg]overlay=0:(H-h)/2,setsar=1")
+        video = picture + "[v0]"
+    # Smart captions: find the faces in the framed picture, so a caption line can step aside while it would cover one.
+    samples, face = None, None
+    number = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
+    spot = clip.get("capY") if number(clip.get("capY")) else style.get("cap_y")   # this clip's own spot, else the look's
+    if check_faces and style.get("captions", True) not in (False, "No"):
+        samples = face_samples(d / "source.mp4", start, dur, picture, (W, H))
+        if samples is None:
+            print(f"Clip {n}: faces were not checked, because the extra pass over the picture failed. The captions stay at their own spots.", flush=True)
+        else:
+            # A cutaway hides the speaker, so the captions rest while it plays.
+            samples = [(t, [] if any(float(c["at"]) <= t <= float(c["at"]) + float(c.get("seconds", 1.15)) for c in cuts) else boxes)
+                       for t, boxes in samples]
+            # For the page: where the speaker's face is, as the middle top and bottom of the largest face in each sample.
+            big = [max(boxes, key=lambda b: (b[2] - b[0]) * (b[3] - b[1])) for _, boxes in samples if boxes]
+            if big:
+                mid = lambda i: sorted(b[i] for b in big)[len(big) // 2]
+                face = [round(mid(1) / H * 100), round(mid(3) / H * 100)]
     ass.write_text(build_ass(style, (W, H), clip.get("title", ""), words, mutes, dur, banner, cue, look,
-                             (lambda t: steps_at(drop_steps, t) * k) if has_drop else None), encoding="utf-8")
+                             (lambda t: steps_at(drop_steps, t) * k) if has_drop else None, samples, 0.25,
+                             spot if number(spot) else None), encoding="utf-8")
     if cuts:
         cut_in, chain = cutaway_filters(d, cuts, 1 + extra.count("-i"), region, "vraw", "vcut", float(style.get("cut_push", 0.5)))
         extra += cut_in
@@ -545,19 +724,26 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
                             for i, c in enumerate(cuts))
                  + ";[a0]" + "".join(f"[x{i}]" for i in range(len(cuts)))
                  + f"amix=inputs={len(cuts) + 1}:duration=first:normalize=0,aformat=channel_layouts=stereo[a]")
+    # This clip's own volume, in percent: 0 is silent, 150 the loudest. It leaves the flash and the ending video alone.
+    volume = min(150.0, max(0.0, float(clip["volume"]))) if number(clip.get("volume")) else 100.0
+    if volume != 100:
+        audio = audio[:-3] + f"[a1];[a1]volume={volume / 100:.2f}[a]"
     vout, aout, added = "[v]", "[a]", 0.0
-    if append:
-        # The Noxi flash: the owner's own end card video plays after the clip.
+    # What plays after the clip: the Noxi flash (the owner's or the studio's own end card video), then the studio's ending video.
+    tails = ([card] if append else []) + ([ending] if ending else [])
+    for i, tail in enumerate(tails):
         idx = 1 + extra.count("-i")
-        extra += ["-i", card]
-        added = probe(card)["duration"]
+        extra += ["-i", tail]
+        secs = probe(tail)["duration"]
+        added += secs
         video += (f";[{idx}:v]scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,"
-                  f"setsar=1,fps=30,format=yuv420p[ev]")
-        if has_audio(card):
-            audio += f";[{idx}:a]aresample=48000,aformat=channel_layouts=stereo[ea]"
+                  f"setsar=1,fps=30,format=yuv420p[ev{i}]")
+        if has_audio(tail):
+            audio += f";[{idx}:a]aresample=48000,aformat=channel_layouts=stereo[ea{i}]"
         else:
-            audio += f";anullsrc=r=48000:cl=stereo,atrim=0:{added:.3f}[ea]"
-        audio += ";[v][a][ev][ea]concat=n=2:v=1:a=1[vo][ao]"
+            audio += f";anullsrc=r=48000:cl=stereo,atrim=0:{secs:.3f}[ea{i}]"
+    if tails:
+        audio += ";[v][a]" + "".join(f"[ev{i}][ea{i}]" for i in range(len(tails))) + f"concat=n={len(tails) + 1}:v=1:a=1[vo][ao]"
         vout, aout = "[vo]", "[ao]"
     out = out_dir / f"{stem}.mp4"
     # The page takes files under 20 MB. A long clip gets a lower top bitrate, so it still fits.
@@ -574,7 +760,8 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict) ->
     return {"n": n, "file": f"clips/{out.name}", "srt": f"clips/{stem}.srt", "seconds": round(dur + added, 1),
             "title": clip.get("title", ""), "muted": len(mutes), "mb": round(out.stat().st_size / 1048576, 1),
             **({"series": clip.get("series", ""), "part": part, "parts": parts} if multi else {}),
-            **({"flash": True} if flash else {})}
+            **({"flash": True} if flash else {}),
+            "face": face, "faces_checked": samples is not None}
 
 
 def render(job: str, only: list | None = None) -> None:
@@ -583,14 +770,26 @@ def render(job: str, only: list | None = None) -> None:
         if not (d / need).exists():
             sys.exit(f"{need} is missing in {d}. See CLAUDE.md for the step that makes it.")
     plan = read_json(d / "clips.json")
-    style = {**DEFAULT_STYLE, **plan.get("style", {})}
+    given = plan.get("style", {})
+    style = {**DEFAULT_STYLE, **look_style(given.get("look")), **given}
     transcript = read_json(d / "transcript.json")
     info = probe(d / "source.mp4")
-    done = []
+    from . import faces
+    why = faces.why_not()
+    if why:
+        print(f"Faces were not checked: {why}. The captions stay at their own spots.", flush=True)
+    # Cutting some clips again keeps the others. A clip rendered again goes over the same file and gets the next version.
+    path = d / "rendered.json"
+    done = {int(x["n"]): x for x in (read_json(path) if path.exists() else [])}
     for clip in plan["clips"]:
-        if only and int(clip["n"]) not in only:
+        n = int(clip["n"])
+        if only and n not in only:
             continue
-        r = render_clip(d, info, transcript, style, clip)
-        done.append(r)
-        print(f"Clip {r['n']}: {r['seconds']}s, {r['mb']} MB, {r['muted']} muted words -> {d / r['file']}", flush=True)
-    write_json(d / "rendered.json", done)
+        r = render_clip(d, info, transcript, style, clip, not why)
+        r["version"] = int(done[n].get("version") or 1) + 1 if n in done else 1   # an entry from before versions counts as 1
+        done[n] = r   # an entry that was there keeps its place in the list
+        write_json(path, list(done.values()))
+        print(f"Clip {r['n']}: {r['seconds']}s, {r['mb']} MB, {r['muted']} muted words, version {r['version']} -> {d / r['file']}", flush=True)
+    if not only:
+        # A full cut lists the clips of clips.json, in its order, and no clip that has left it.
+        write_json(path, [done[int(c["n"])] for c in plan["clips"]])
