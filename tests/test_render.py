@@ -49,6 +49,9 @@ def words(*rows):
     return [{"w": w, "s": s, "e": e} for w, s, e in rows]
 
 
+
+NO_PACE = {"trim_pauses": 0, "cut_fillers": False, "cut_dead": False}
+
 class LookStyle(unittest.TestCase):
     def test_each_page_name_becomes_an_overlay(self):
         want = {"Poster": "poster", "Banner": "banner-safe", "Glass card": "glass", "Sticker": "sticker", "Frame": "frame",
@@ -481,7 +484,8 @@ class RealRender(unittest.TestCase):
         ]
         clips = [{"n": i + 1, "start": 0.0, "end": cls.SECONDS, "title": "Short title", "style": s} for i, s in enumerate(styles)]
         clips[7]["volume"] = 0
-        common.write_json(d / "clips.json", {"clips": clips})
+        # These tests measure looks, captions and faces against fixed times in the source, so the pace cuts stay off.
+        common.write_json(d / "clips.json", {"style": NO_PACE, "clips": clips})
         cls.log = io.StringIO()
         with contextlib.redirect_stdout(cls.log):
             render.render("real")
@@ -587,7 +591,7 @@ class RealRender(unittest.TestCase):
         d.mkdir()
         for name in ("source.mp4", "transcript.json"):
             shutil.copy(self.d / name, d / name)
-        common.write_json(d / "clips.json", {"clips": [{"n": 1, "start": 0.0, "end": self.SECONDS, "title": "Short title"}]})
+        common.write_json(d / "clips.json", {"style": NO_PACE, "clips": [{"n": 1, "start": 0.0, "end": self.SECONDS, "title": "Short title"}]})
         face = (340, 700, 740, 1180)   # a face over the place where the Poster captions rest
         with mock.patch.object(render, "face_samples", return_value=[(i * 0.25, [face]) for i in range(10)]), contextlib.redirect_stdout(io.StringIO()):
             render.render("moved")

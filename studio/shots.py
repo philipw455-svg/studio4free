@@ -2,6 +2,7 @@
 import re
 import subprocess
 
+from . import pace
 from .common import job_dir, read_json
 
 
@@ -21,15 +22,28 @@ def shots(job: str, only: list | None = None) -> None:
     d = job_dir(job)
     out_dir = d / "shots"
     out_dir.mkdir(exist_ok=True)
-    for clip in read_json(d / "clips.json")["clips"]:
+    from .render import DEFAULT_STYLE, look_style
+    plan = read_json(d / "clips.json")
+    given = plan.get("style", {})
+    style = {**DEFAULT_STYLE, **look_style(given.get("look")), **given}
+    transcript = read_json(d / "transcript.json")
+    for clip in plan["clips"]:
         n = int(clip["n"])
         if only and n not in only:
             continue
-        start, dur = float(clip["start"]), float(clip["end"]) - float(clip["start"])
-        bounds = [0.0] + camera_cuts(d / "source.mp4", start, dur) + [dur]
+        # The same pieces the cut plays: the hook first, then the story with its long pauses cut short.
+        # So the times printed here are times in the finished clip, the times that focus, anchor and lift steps use.
+        own = {**style, **look_style((clip.get("style") or {}).get("look")), **(clip.get("style") or {})}
+        try:
+            src, start, end, _ = pace.prepare(d, clip, transcript, own)
+        except ValueError as e:
+            print(e, flush=True)
+            continue
+        dur = end - start
+        bounds = [0.0] + camera_cuts(src, start, dur) + [dur]
         inputs, labels = [], []
         for i, (a, b) in enumerate(zip(bounds, bounds[1:])):
-            inputs += ["-ss", f"{start + (a + b) / 2:.3f}", "-i", str(d / "source.mp4")]
+            inputs += ["-ss", f"{start + (a + b) / 2:.3f}", "-i", str(src)]
             labels.append(f"[{i}:v]trim=end_frame=1,scale=480:-2,drawgrid=w=48:h=27:t=1:c=yellow@0.55,"
                           f"drawtext=text='{a:.2f}':x=6:y=6:fontsize=22:fontcolor=white:box=1:boxcolor=black[s{i}]")
         cols = min(5, len(labels))

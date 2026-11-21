@@ -1,7 +1,7 @@
 """Clip studio command line. Run: python -m studio <step> --job NAME"""
 import argparse
 
-from . import buffer, doctor, fetch, join, plan, render, review, shots, tools, transcribe
+from . import buffer, craft, doctor, fetch, join, plan, render, review, shots, tools, transcribe
 
 
 def nums(text):
@@ -37,8 +37,13 @@ def main():
     a.add_argument("--job", required=True)
     a.add_argument("--model", default="small", help="tiny, base, small or medium")
     a.add_argument("--language", default=None)
+    a.add_argument("--plain", action="store_true", help='do not ask Whisper to write "um" and "uh"')
 
     a = sub.add_parser("cut", help="render the clips listed in clips.json")
+    a.add_argument("--job", required=True)
+    a.add_argument("--only", default="", help="clip numbers, for example 2,5")
+
+    a = sub.add_parser("craft", help="check each clip for a hook, a clear story, an even pace and generic words")
     a.add_argument("--job", required=True)
     a.add_argument("--only", default="", help="clip numbers, for example 2,5")
 
@@ -96,9 +101,11 @@ def main():
     elif x.step == "join":
         join.join(x.job)
     elif x.step == "transcribe":
-        transcribe.transcribe(x.job, x.model, x.language)
+        transcribe.transcribe(x.job, x.model, x.language, not x.plain)
     elif x.step == "cut":
         render.render(x.job, nums(x.only))
+    elif x.step == "craft":
+        craft.check(x.job, nums(x.only))
     elif x.step == "shots":
         shots.shots(x.job, nums(x.only))
     elif x.step == "words":

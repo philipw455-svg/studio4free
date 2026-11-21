@@ -30,8 +30,9 @@ python -m studio fetch "https://youtu.be/..." --job demo    # get the video as j
 python -m studio transcribe --job demo                      # the words, each with its time
 python -m studio words --job demo --start 205 --end 240     # print the words between two times
 python -m studio fix --job demo "4450.22|old|new"           # correct a misheard word
-# write jobs/demo/clips.json, then:
+# write jobs/demo/clips.json (each clip with a hook and a payoff), then:
 python -m studio shots --job demo                           # one frame of every camera shot, to set the frame by hand
+python -m studio craft --job demo                           # check the hook, the story, the pace, the camera and the words for slop
 python -m studio cut --job demo                             # render the clips. --only 2,5 cuts those again over the same files
 python -m studio sheet --job demo                           # frames of every finished clip, to check by eye
 python -m studio join --job demo                            # an edit or a montage: join the parts in join.json into one video

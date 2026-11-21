@@ -7,6 +7,7 @@ import re
 import subprocess
 import sys
 
+from . import pace
 from .common import FONTS, ROOT, has_audio, job_dir, probe, read_json, run, write_json
 from .overlays import NAMES, SAFE, colour, options
 
@@ -28,7 +29,14 @@ DEFAULT_STYLE = {
     "fit": "blur",            # plain layout only. blur: whole frame over a blurred copy. crop: fill the frame.
     "focus": 0.5,             # where the frame sits: 0 (left edge) to 1 (right edge), or [second, value] steps at camera cuts.
     "zoom": "Smooth",         # none | Smooth | Slow creep
-    "zoom_steps": True,       # a new zoom level every sixth word and at each sentence. False: one gentle move.
+    "zoom_steps": True,       # the zoom takes a new level at a new sentence. False: one gentle move.
+    "zoom_every": 0,          # also a new level every this many words. 0: only at a new sentence (the owner, 20 Nov 2026: "simple camera motion").
+    "zoom_gap": 4.0,          # seconds at least between two zoom steps, so the camera never busies itself.
+    "zoom_levels": [1.0, 1.12],  # the levels the steps move between, before zoom_strength. The first clips used [1.0, 1.13, 1.04, 1.19].
+    "trim_pauses": 0.7,       # a pause inside a clip longer than this many seconds is cut short. 0: keep every pause.
+    "keep_pause": 0.3,        # how much of a cut pause stays.
+    "cut_fillers": True,      # cut every "um" and "uh" out of the clip (the owner, 20 Nov 2026: "cut deadspace and ums").
+    "cut_dead": True,         # cut the silence before the first word and after the last word.
     "zoom_strength": 0.5,     # how far each zoom step goes. 1 is the owner's first clips (up to 119%). 0.5 goes half as far.
     "zoom_smooth": 4.0,       # how slowly the zoom moves. 1 is a 0.38 second step. Above 1, each step glides for at least
                               # 0.38 seconds times this, and for as long as it takes until the next step starts, so the zoom never snaps.
@@ -387,10 +395,14 @@ ZOOM_LEVELS = [1.0, 1.13, 1.04, 1.19]
 ZOOM_MOVES = {"Smooth": 0.38, "Slow creep": 1.1}   # seconds each zoom step takes
 
 
-def zoom_plan(words: list, dur: float, kind: str, stepped: bool, strength: float = 1.0, smooth: float = 1.0):
+def zoom_plan(words: list, dur: float, kind: str, stepped: bool, strength: float = 1.0, smooth: float = 1.0,
+              every: int = 6, gap: float = 0.0, levels=None):
     """The zoom as an ffmpeg expression, and as a function of the clip time.
-    Stepped is the zoom of the owner's first clips: a new framing every sixth word and at the start of each
-    sentence. The framings cycle through ZOOM_LEVELS, and the last one keeps pushing in slowly to the end."""
+    Stepped takes a new framing at the start of each sentence, and also every `every` words when that is above 0.
+    Two steps are at least `gap` seconds apart. The framings cycle through `levels` (ZOOM_LEVELS when none are given),
+    and the last one keeps pushing in slowly to the end. every=6, gap=0 and ZOOM_LEVELS are the owner's first clips."""
+    levels = [float(x) for x in (levels or ZOOM_LEVELS)] or [1.0]
+    count = len(levels)
     move = ZOOM_MOVES.get(kind) if stepped else None
     if move:
         move = round(move * smooth, 3)
@@ -403,10 +415,12 @@ def zoom_plan(words: list, dur: float, kind: str, stepped: bool, strength: float
     keys, n, level, last = [], 0, 0, 0.0
     for i, w in enumerate(words):
         n += 1
-        if i and (n >= 6 or re.search(r"[.?!]$", words[i - 1]["w"])):
+        if i and ((every and n >= every) or re.search(r"[.?!]$", words[i - 1]["w"])):
             t = max(0.0, w["s"] - 0.05)
+            if keys and t - keys[-1][0] < gap:
+                continue
             level, n, last = level + 1, 0, t
-            keys.append((round(t, 2), (ZOOM_LEVELS[level % 4] - ZOOM_LEVELS[(level - 1) % 4]) * strength))
+            keys.append((round(t, 2), (levels[level % count] - levels[(level - 1) % count]) * strength))
     linear = kind == "Slow creep"
     end = keys[-1][0] if keys else 0.0
     if smooth > 1:
@@ -538,10 +552,16 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict, ch
     if ending and not ending.exists():
         sys.exit(f"The ending video is missing: {style['ending_video']}")
     W, H = SIZES.get(style["aspect"], SIZES["9:16"])
-    start, end = float(clip["start"]), float(clip["end"])
-    dur = round(end - start, 3)
-    if dur <= 0:
+    if float(clip["end"]) - float(clip["start"]) <= 0:
         sys.exit(f"Clip {clip.get('n')} ends before it starts.")
+    # The hook and the pace: a clip can open on its strongest line, and long pauses are cut short (studio/pace.py).
+    # Then src is the joined file, and every time below counts from the first frame of the finished clip.
+    try:
+        pieces = pace.plan(clip, transcript, style)
+        src, start, end, transcript = pace.prepare(d, clip, transcript, style)
+    except ValueError as e:
+        sys.exit(str(e))
+    dur = round(end - start, 3)
     n = int(clip["n"])
     words = clip_words(transcript, start, end)
     asked = {re.sub(r"[^a-z]", "", str(x).lower()) for x in clip.get("mute", [])}
@@ -569,7 +589,8 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict, ch
 
     kind = clip.get("zoom", style.get("zoom", "none"))
     stepped = bool(style.get("zoom_steps", True)) and kind in ZOOM_MOVES
-    z, zoom_at = zoom_plan(words, dur, kind, stepped, float(style.get("zoom_strength", 0.5)), float(style.get("zoom_smooth", 4.0)))
+    z, zoom_at = zoom_plan(words, dur, kind, stepped, float(style.get("zoom_strength", 0.5)), float(style.get("zoom_smooth", 4.0)),
+                           int(style.get("zoom_every", 6) or 0), float(style.get("zoom_gap", 0) or 0), style.get("zoom_levels"))
     region = (0, 0, W, H)          # where the source picture sits in the frame
     extra, temps = [], []
     cuts = sorted(clip.get("cutaways") or [], key=lambda c: float(c["at"]))
@@ -674,7 +695,7 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict, ch
     number = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
     spot = clip.get("capY") if number(clip.get("capY")) else style.get("cap_y")   # this clip's own spot, else the look's
     if check_faces and style.get("captions", True) not in (False, "No"):
-        samples = face_samples(d / "source.mp4", start, dur, picture, (W, H))
+        samples = face_samples(src, start, dur, picture, (W, H))
         if samples is None:
             print(f"Clip {n}: faces were not checked, because the extra pass over the picture failed. The captions stay at their own spots.", flush=True)
         else:
@@ -748,7 +769,7 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict, ch
     out = out_dir / f"{stem}.mp4"
     # The page takes files under 20 MB. A long clip gets a lower top bitrate, so it still fits.
     rate = max(600, min(3500, int(float(style.get("max_mb", 19.0)) * 8192 * 0.96 / (dur + added)) - 160))
-    run(["ffmpeg", "-y", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", d / "source.mp4", *extra,
+    run(["ffmpeg", "-y", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", src, *extra,
          "-filter_complex", video + ";" + audio, "-map", vout, "-map", aout,
          "-c:v", "libx264", "-preset", "medium", "-crf", "23", "-maxrate", f"{rate}k", "-bufsize", f"{rate * 2}k", "-c:a", "aac", "-b:a", "160k",
          "-movflags", "+faststart", out])
@@ -761,7 +782,9 @@ def render_clip(d, src_info: dict, transcript: dict, style: dict, clip: dict, ch
             "title": clip.get("title", ""), "muted": len(mutes), "mb": round(out.stat().st_size / 1048576, 1),
             **({"series": clip.get("series", ""), "part": part, "parts": parts} if multi else {}),
             **({"flash": True} if flash else {}),
-            "face": face, "faces_checked": samples is not None}
+            "face": face, "faces_checked": samples is not None,
+            **({"hook": True} if pace.hook_span(clip) else {}),
+            **({"pieces": pace.describe(pieces)} if len(pieces) > 1 else {})}
 
 
 def render(job: str, only: list | None = None) -> None:

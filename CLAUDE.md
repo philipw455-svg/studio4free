@@ -137,7 +137,8 @@ A session changes a field with an update that merges. It never replaces the docu
   "Use for all clips" in the clip editor saves that spot as the studio's `capY`. It changes new jobs only, never a job that exists.
 - `status`: `sent` → `working` → `shortlist` → `cutting` → `review` → `scheduling` → `scheduled`. The owner can also set `checking`. Use `blocked` when you cannot continue.
 - `statusNote`: one or two plain sentences the owner reads on the page.
-- `shortlist`: `[{n, start, end, title, line, why, keep}]`. Times are seconds in the source. The owner sets `keep` to false to skip a moment.
+- `shortlist`: `[{n, start, end, title, line, why, keep, hook, payoff}]`. Times are seconds in the source. The owner sets `keep` to false to skip a moment.
+  `hook` is `{start, end}` or `"start"`, and `payoff` is the line the story builds to (see "The craft rules" in step 4). Copy both onto the clip in `clips.json`.
   A part of a multi-part story also has `series` (a short id), `part` and `parts`. Clips carry the same three fields.
 - `clips`: `[{n, title, description, seconds, asset, publishAt, status, url, bufferIds, live, check, flash, capY, vol, notes, ver, redo, face}]`.
   `asset` is the page asset id of the video. `live` holds the link of each published post: `{youtube: "https://...", instagram: "https://..."}`.
@@ -199,9 +200,22 @@ A job with no `account` field needs no account document. Use `settings/main` for
    - A direct link must lead to the video file itself. A share page of Google Drive or Dropbox is not the file. If the download is not a video, say so in `statusNote`.
    - There is no channel lookup. The job's `credit` is what the owner typed. Use it in the credit line.
 3. **Transcribe.** `python -m studio transcribe --job <name>` writes `jobs/<name>/transcript.txt`. Use `--model base` for speed and `small` for accuracy.
+   Whisper writes "um" and "uh" only when its prompt holds them, so the step gives it a prompt full of fillers. The cut needs them in the transcript
+   to cut them out. `--plain` leaves the prompt out. A transcript made before 20 Nov 2026 has almost no fillers: transcribe it again before a new cut.
 4. **Shortlist.** Read `transcript.txt`. Pick moments that match `ask`. Offer a few more than `ask.count`.
    Each moment starts at the start of a thought and ends on a finished sentence.
    Never cut words out of the middle of a point. Write `shortlist` and set `status: shortlist`. Then stop and wait for the owner.
+   **The craft rules (20 Nov 2026).** The owner asked for "an immediate opening hook, simple camera motion, clear narrative structure,
+   and consistent high-quality pacing that avoids generic AI slop", and "it also needs to cut deadspace and ums". Every clip follows them:
+   - **One story.** Each moment has a setup, a build and a payoff. Write `payoff` on the moment: the line the story builds to,
+     in the speaker's own words. The story ends on that line, or on the sentence right after it. A moment with no clear payoff is not a clip.
+   - **The hook.** Write `hook` on the moment: `{start, end}` in source seconds, 1.5 to 4 seconds, between words.
+     It is the line that makes a viewer stay: the payoff, a bold claim, or the most surprising line. It plays first, then the story plays from its start.
+     The speaker's face must be on screen during the hook: check it on the shots sheet. When the camera is on a listener, pick another line.
+     When the first line of the story is already the strongest line, write `"hook": "start"` and nothing is repeated.
+   - **No slop.** Titles, descriptions and hashtags say what happens in this clip, in plain words, from what is said in it.
+     Never use hype words or bait ("you won't believe", "insane", "this changed everything", "the truth about"), long dashes, emojis
+     or generic hashtags (#viral, #fyp). `studio/craft.py` holds the full list.
    **Jobs that run without a stop.** When `ask.auto` is true, do not wait at the shortlist.
    Still write the shortlist, keep the best `ask.count` moments, and go on to cut, check, upload and stop at `review`.
    When `ask.demoFirst` is true, cut the single best moment first and send that one clip to the owner in the chat.
@@ -222,7 +236,8 @@ A job with no `account` field needs no account document. Use `settings/main` for
    ```json
    {"style": {"look": {"overlay": "Poster", "ovs": {"color": "#ffffff", "size": "Medium", "hold": "2"}, "capColor": "#ffe300", "capY": null,
                        "zoom": "Smooth", "captions": "Yes", "language": "Mute it", "brand": "appnoxi.com"}},
-    "clips": [{"n": 1, "start": 205.2, "end": 239.5, "title": "On-screen title", "mute": [], "capY": null, "volume": 100}]}
+    "clips": [{"n": 1, "start": 205.2, "end": 239.5, "hook": {"start": 231.0, "end": 233.4}, "payoff": "the line it builds to",
+               "title": "On-screen title", "mute": [], "capY": null, "volume": 100}]}
    ```
    **The look.** Copy the job's whole `look` object into `style.look`, as the page saved it. Read it from the job again before every cut.
    The renderer (`look_style()` in `studio/render.py`) reads `overlay`, `ovs` (or `opts` on an older job), `capColor`, `capY`, `zoom`, `captions`, `language` and `brand` from it.
@@ -327,10 +342,20 @@ A job with no `account` field needs no account document. Use `settings/main` for
    Lift the picture instead with `lift`, as steps like `focus`: `"lift": [[0, 0], [12.8, 340], [15.6, 0]]`. The number is pixels of a 1920 frame.
    The picture moves up by that much for the shot, and a soft, dark copy of it fills the space left underneath.
    Pick the smallest lift that puts the chin above the tag at y 1002. A fully slouched webcam host needed about 740.
-   **Zoom steps.** With `zoom` "Smooth" or "Slow creep" the picture takes a new zoom level every sixth word and at each
-   new sentence, through 100%, 113%, 104% and 119%, and pushes in slowly on the last line. Each step eases over 0.38 seconds.
-   This is the zoom of the owner's first clips, and the owner named one of them as the reference on 12 Nov 2026:
-   https://youtube.com/shorts/7nmb9gJYpEo. Match its zooms and its cutaways. `"zoom_steps": false` in `style` turns the steps off.
+   **Zoom steps: simple camera motion (20 Nov 2026).** With `zoom` "Smooth" or "Slow creep" the picture takes a new zoom level only at a new sentence,
+   at most once every 4 seconds, between two levels (100% and 106% at the saved strength), and pushes in slowly on the last line.
+   These are the defaults `"zoom_every": 0`, `"zoom_gap": 4.0` and `"zoom_levels": [1.0, 1.12]`. Leave them out of `clips.json`.
+   The owner's first clips stepped every sixth word through 100%, 113%, 104% and 119% (`"zoom_every": 6, "zoom_gap": 0, "zoom_levels": [1.0, 1.13, 1.04, 1.19]`);
+   the reference of 12 Nov 2026 was https://youtube.com/shorts/7nmb9gJYpEo. The owner asked for simpler motion on 20 Nov 2026, so do not go back to it
+   unless the owner asks. `"zoom_steps": false` in `style` turns the steps off.
+   **The hook, the pauses and the ums.** `studio/pace.py` builds each clip from stretches of the source: the `hook` first, then the story.
+   Inside the story, a pause longer than 0.7 seconds is cut down to 0.3 seconds, every "um" and "uh" is cut out, and the silence before
+   the first word and after the last word is cut off. These are the defaults `"trim_pauses": 0.7`, `"keep_pause": 0.3`, `"cut_fillers": true`
+   and `"cut_dead": true`. Words such as "like" and "you know" stay: cutting them can change what the speaker means.
+   When a clip plays more than one stretch, every clip time counts from the first frame of the finished clip, hook included:
+   `focus`, `anchor`, `lift`, `text_drop`, cutaway `at` and the face boxes. `python -m studio shots` prints the cuts on that timeline,
+   so always set the frame from its sheet after you set the hook, and set it again after you move the hook, the start or the end.
+   `python -m studio words` still prints source seconds, the times that `start`, `end` and `hook` use.
    **The owner's saved motion settings (12 Nov 2026).** The owner asked for the movements "50% smoother and subtle" than the reference.
    These are the defaults in `studio/render.py`, so leave them out of `clips.json` unless the owner asks for a change:
    `"zoom_strength": 0.5` (steps reach 109.5%, not 119%), `"zoom_smooth": 4.0` (each step glides for at least 1.5 seconds and until the next step starts, easing in and out;
@@ -338,7 +363,9 @@ A job with no `account` field needs no account document. Use `settings/main` for
    `"cut_push": 0.5` (a cutaway pushes from 103% to 107%), `"title_seconds": 2.0`.
    The zoom is made with ffmpeg's perspective filter, which places the picture in fractions of a pixel.
    Scaling and cropping frame by frame moves in whole pixels and makes a slow zoom shake. The owner saw that shake. Do not go back to it.
-   **Cutaways.** The owner calls these filler clips and expects them. Add up to one for every 10 seconds, where a clear noun is spoken:
+   **Cutaways.** The owner calls these filler clips and expects them. Add at most one for every 15 seconds (20 Nov 2026: "avoid generic AI slop"),
+   only where a clear noun is spoken and the picture adds something. A clip with no good noun gets no cutaway. Never use a generic mood shot,
+   such as friends laughing, for an abstract word such as "my crew":
    `"cutaways": [{"file": "stock/4344.mp4", "at": 38.05, "seconds": 1.15, "from": 2.0, "word": "drinking in the club"}]`.
    `at` is seconds into the clip, a moment before the word. `from` is where to start inside the stock file. Each plays with a quiet whoosh.
    - The picture must match the spoken noun literally: a nightclub for "club", car keys for "keys".
@@ -362,7 +389,7 @@ A job with no `account` field needs no account document. Use `settings/main` for
    `layout: plain` drops the banner. Then `fit` is `blur` (whole frame on a blurred copy) or `crop` (fill the frame).
    The renderer does not read `look.fit`. It matters only for a "First banner" job. Map it by hand there:
    "Black banner with title and brand" → banner, "Whole frame on a blurred copy" → plain + blur, "Fill the frame" → plain + crop.
-   Keep on-screen titles short, about 30 characters, so they fit on two lines.
+   Keep on-screen titles short, about 30 characters and never over 40, so they fit on two lines. Build them from the speaker's own words.
    **Another studio's brand.** The Noxi mark, the Noxi end card and the Noxi ad line belong to the owner's own account, the one with `legacy: true`.
    A studio that is not the legacy one never gets the Noxi mark or the Noxi end card. It gets only its own uploads.
    - Always set `"logo": ""` in `style` for it. The renderer's default logo is the Noxi mark.
@@ -381,6 +408,10 @@ A job with no `account` field needs no account document. Use `settings/main` for
    Work out the post days from the job's post time and the open days, then set `"flash": true` on the clips that land on a flash day.
    Save `flash` on the clip record too. After `python -m studio schedule`, the program names every clip that needs a new cut.
    If the owner moves a clip to or from a flash day, cut that one clip again as "Changes to one clip" says.
+   **The craft check.** Before every cut, run `python -m studio craft --job <name>`. It names a missing or broken hook, a story that starts
+   in the middle of a sentence or ends without its payoff, dead air, ums left in, a slow pace, a busy zoom, cutaways in the first 3 seconds
+   or too many of them, and slop in a title or a description. Fix every problem before you cut. Run it again after you write `posting.json`,
+   because it reads the post titles and descriptions there too.
    Run `python -m studio cut --job <name>`. Watch at least one frame of each clip before you continue.
 6. **Rules check.** Run this after every cut, and whenever the status is `checking`.
    Run `python -m studio texts --job <name>`. It writes `clip_texts.json` and prints the official rule pages from `rules/sources.json`.
@@ -405,7 +436,7 @@ A job with no `account` field needs no account document. Use `settings/main` for
    Every description has this shape, with a blank line between parts. The owner set it on 12 Nov 2026:
    1. A quick description of the clip, one or two sentences.
    2. "Clip from <show> with <guest>." and, on the next line, "Credit: <job credit>".
-   3. Matching hashtags.
+   3. Three to five hashtags that name the show, the people and the topic. Never a generic one such as #viral or #fyp.
    4. The ad line from `look.descTail`, last: `Ad · Noxi · free Nov 20 · @appnoxi`.
    The ad line starts with the word "Ad". Never write "#ad" at the end instead. The handle is `@appnoxi`, with no dot.
    "free Nov 20" is the launch date of Noxi. That line is only for posts up to 20 Nov 2026.
@@ -415,7 +446,7 @@ A job with no `account` field needs no account document. Use `settings/main` for
    The Noxi ad line belongs to the owner's own account. For any other account, part 4 is that account's `descTail`, as it is written.
    Leave part 4 out when that `descTail` is empty. Never write the Noxi line on another account's clip.
    The owner requires the credit line in every caption, for every account. Never post a clip without it.
-   Use only facts from the video in titles and descriptions.
+   Use only facts from the video in titles and descriptions. Write them in plain words, with no hype and no bait. The craft check reads them.
 8. **Schedule.** When the status is `scheduling`, read each clip's `publishAt`.
    Never schedule a clip whose `check.level` is `risk`, unless `check.override` is true. Never schedule a clip with no `check`. Mark such clips with `"hold": true` in `posting.json`. The owner sets these on the page.
    Never schedule a clip that has `redo`. Make its change first.

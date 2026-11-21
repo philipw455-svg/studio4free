@@ -4,7 +4,12 @@ import sys
 from .common import clock, job_dir, write_json
 
 
-def transcribe(job: str, model: str = "small", language: str | None = None) -> None:
+# Whisper writes "um" and "uh" only when its prompt already holds them. Without them in the transcript,
+# the cut cannot find them. So the prompt is a line of speech full of fillers. `--plain` leaves it out.
+FILLER_PROMPT = "Umm, so, uh, I was like, hmm, I don't know. Um, okay. Uh, yeah."
+
+
+def transcribe(job: str, model: str = "small", language: str | None = None, fillers: bool = True) -> None:
     try:
         from faster_whisper import WhisperModel
     except ImportError:
@@ -21,7 +26,8 @@ def transcribe(job: str, model: str = "small", language: str | None = None) -> N
         sys.exit("ffmpeg could not read the sound of the source video.")
     audio = np.frombuffer(raw.stdout, np.int16).astype(np.float32) / 32768.0
     m = WhisperModel(model, device="cpu", compute_type="int8")
-    segments, info = m.transcribe(audio, language=language, word_timestamps=True, vad_filter=True)
+    segments, info = m.transcribe(audio, language=language, word_timestamps=True, vad_filter=True,
+                                  initial_prompt=FILLER_PROMPT if fillers else None)
     segs, lines = [], []
     for s in segments:
         words = [{"s": round(w.start, 2), "e": round(w.end, 2), "w": w.word.strip()} for w in (s.words or [])]
