@@ -21,7 +21,8 @@ Then follow the steps below. Write to the owner in short, plain sentences.
 ## Setup on any machine
 
 ```
-pip install -r requirements.txt      # yt-dlp, faster-whisper, Pillow, tzdata, numpy and onnxruntime
+pip install -r requirements.txt      # yt-dlp, faster-whisper, Pillow, tzdata, numpy, onnxruntime and Playwright
+python -m playwright install chromium  # the browser that films the ad templates (skip if it is already cached)
 python -m studio doctor              # names what is missing, and what cannot run without it
 ```
 
@@ -551,6 +552,87 @@ Compare the posts of one login only with the clips of the accounts that use that
 Match each Buffer post to its clip by `bufferIds`. For a post that Buffer has sent, write a `status` that starts with "published",
 with the date and the service, and save its link in `live`. For a post with an error, say so in `status` and tell the owner.
 A clip whose `status` starts with "published" cannot be changed any more. The clip editor then offers only Save.
+
+## Business automation: ad jobs (added 14 Nov 2026)
+
+The second area of Studio4Free makes short ad videos for a brand and schedules them in Buffer. Podcast clipping is unchanged.
+One studio can own many **brands**. Noxi (`noxi`) is the first. A brand id is lower case letters and dashes only.
+
+**The brand brain.** `brands/<brand-id>/` holds everything Claude needs to make ads for that brand:
+`profile.md`, `facts.md`, `rules.md`, `voice.md`, `kit.md`, `calendar.md`, `history.md`, `results.md` and `assets/`.
+Before any work on an ad, run `python -m studio brain show --brand <id>` and read all of it.
+- The page keeps the same data in its database, collection `brands`: id `<brand-id>` for the first studio, `<studio number>~<brand-id>`
+  for any other, with `account` set. The document is `{id, account, files: {"facts.md": "..."}, assets: [...]}`.
+  `python -m studio brain pack --brand <id>` writes it to `brands/<id>/.brain.json` for ArtifactData; `brain unpack --file` writes a page copy back to the folder.
+  When the two differ, ask the owner which is newer. The page part is not built yet.
+- `facts.md`: only approved claims (`status: approved`) may go in an ad. Never mark a fact approved yourself. Only the owner says yes.
+- `kit.md`: a `retired` item must never appear. Noxi's old end card `assets/brand/endcard.mp4` is retired, because it shows the old stacked NO/XI logo.
+
+**The brain check.** `python -m studio brain-check <brand-id> <storyboard.json>` lists every problem in plain words, with the frame number:
+a claim not in `facts.md` (or still waiting for the owner's yes), a word on the avoid list, a line under 2 seconds, more than one line,
+a retired kit item, a date that conflicts with `calendar.md`, a Roman numeral clock time, words outside the Reels safe area, and a storyboard of another brand.
+Show every problem to the owner. Never hide one.
+
+**The ad job** is `jobs/{id}` with `kind: "ad"`, `brand` (the brand id) and `account`. A session never mixes two brands.
+Each step saves to the job, and `status` says which step waits. Always pass `if_version`.
+1. **Brief** (`status: brief`, then the owner sends it as `sent`). `brief: {about, notes, shots: [asset ids], audience, action, postWhen}`.
+2. **Context** (`status: context`). Run `python -m studio ad context --brand <id> --job <job.json>` and save the card as `context.card`.
+   Ask at most 3 questions, only about gaps: `context.questions: [{q, a}]`. The owner answers on the page.
+3. **Hooks** (`status: hooks`). Write 3 hooks in `hooks: [{n, line, style, why}]`. Each is a desire line: what the viewer wants.
+   Each suggests a different style. The owner picks or mixes: `hookPick: {n, line}`.
+4. **Choices** (`status: choices`). `choices: {style, length, shape, look, pace, sound, cast, endCard, cta}`.
+   The options are in `studio/adjob.py` (`CHOICES`). Check them with `python -m studio ad choices`.
+5. **Storyboard** (`status: storyboard`). Write `storyboard` (the format is at the top of `studio/brain_check.py`): every frame with
+   `start`, `end`, `picture`, `words`, `sound`, plus what its style's README asks for. Run the brain check and save its lines as `check: {problems, at}`.
+   Nothing renders until the owner sets `storyboardOk: true`.
+6. **Render** (`status: rendering`). Draw a few frames first: `python -m studio film <storyboard.json> --out jobs/<job>/stills --stills 0.5,3,9`.
+   Look at every still. Fix anything that leaves the safe area. Then film once: `python -m studio film <storyboard.json> --out jobs/<job>/ad.mp4`.
+   Upload it to the page as an asset and save `render: {asset, seconds, file, at}`. Set `status: review`.
+7. **Review** (`status: review`). The owner writes `notes`. Change the storyboard, film again, upload, and replace `render.asset`.
+   Never keep two copies: delete the old asset.
+8. **Post** (`status: post`). Write `post: {caption, firstComment, publishAt, services}`. Pick the next open time from the shared calendar:
+   `python -m studio ad slots --times <settings times>`. Podcast clips and ads share it. With no `BUFFER_API_KEY`, list the Buffer posts with
+   the Buffer connector, save their `dueAt` times in a JSON list and pass `--taken <file>`.
+   Nothing goes to Buffer until the owner taps **Approve and schedule** (`post.approved: true`, `status: scheduling`). Then create the post
+   as for a clip, save `post.bufferIds`, and set `status: scheduled`.
+9. **Learn.** 48 hours after the post, read its numbers from Buffer if Buffer offers them (the connector's `get_aggregated_post_metrics`
+   or the post itself). Save `learn: {at, metrics, line}` and run `python -m studio ad learn --brand <id> --job <job.json>`.
+   It adds a row to `history.md`, and to `results.md` when there are numbers. Set `status: learned`. Commit the brain change.
+
+**The Ad Maker** (the owner asked on 15 Nov 2026 for one box where he says what he wants, for example "a hype kinetic typography,
+a brand launch theme of Rome, camera movements, feature the Trojan horse" or "use all 4 mascots to tell a story where ___ happens",
+and for the button to start the work by itself; it replaced the scene-by-scene editor):
+https://claude.ai/artifact/5kkQNAMdfdHW92frBjbWM4 (source `page/ad-editor/editor.html`; build with `python page/ad-editor/build.py`,
+then publish `page/ad-editor/dist/index.html` with `brands.json` as `files` and `root` set to `dist/`, to that URL;
+capabilities db, user, comments, assets). The page warns while he types a Never say or avoid word.
+
+"Make this ad" saves `requests/{id}` (`brand`, `ask`, `length` in seconds, `shape`, `status: "asked"`, `changes: []`) and sends a comment
+to the Claude Code session watching the page: "Make this ad now: requests/{id} ...". "Remake with this change" adds `{at, text}` to
+`changes`, sets `status: "asked"` and sends "Change this ad now: requests/{id} ...". "I like it" sets `status: "approved"` (that is not
+a post: posting still goes through an ad job and the owner's **Approve and schedule**). At the start of every session that works on ads,
+start an `ArtifactComments` watch on the page so these arrive. When one arrives, without asking first:
+1. Read the request with ArtifactData. Act only if `status` is `asked`. Set `status: "making"`.
+2. Write the ad in `jobs/ads/{id}/` (git ignores `jobs/`): `storyboard.json` with `brand`, `length`, `shape`, and `frames` listing every
+   line that appears on screen with its `start` and `end`, so the brain check sees them all. Use a style template when the ask fits one;
+   otherwise set `"style": "Custom"` and `"template": "jobs/ads/{id}/scene.html"` and write that scene: any HTML that loads the runtime
+   with `<script src="s4f:runtime"></script>`, puts words in `.words` elements inside the safe area, and draws a picture that depends only on
+   the time through `S4F.setup(draw)` (camera moves are transforms of a stage element over time). Use the brand's fonts, look colors and kit;
+   never retired kit, never a real person's picture without the owner's yes, and no claim that is not an approved fact.
+   There is no separate mascot art yet (only `assets/mascots/lineup-from-endcard.png`); say so in `note` when an ask needs it.
+3. Run the brain check and film it (`python -m studio film jobs/ads/{id}/storyboard.json --out jobs/ads/{id}/ad.mp4`). Look at stills first
+   and fix anything broken. Film even when the check finds problems: the page shows every one, in plain words, under the video.
+4. Upload the mp4 to the page's asset store (Artifact publish with `url`, `asset: true`) and update the request:
+   `video: {id, url}`, `problems: [plain sentences]`, `note` (one or two lines on what you made and anything you could not do),
+   `status: "done"`. Delete the previous video asset on a remake. Reply on the comment thread with one line and resolve it.
+If anything stops the work, set `status: "stuck"` and say why in `note`.
+
+**The styles** live in `studio/ads/<style>/`, each with a `README.md`: `app-tour`, `mascot-story`, `hype-type`, `sting` and `podcast-endcard`.
+The first four are HTML pages that `studio/film.py` films frame by frame with Playwright at the output size and encodes with ffmpeg at 30 fps.
+`studio/ads/runtime.js` gives them the storyboard, the brand's looks, fonts and files, and the safe area. A picture must depend only on the time.
+Example storyboards: `brands/noxi/storyboards/example-*.json`.
+
+**Rules for every brand.** Nothing posts without the owner's tap. Use only the Buffer login and channels the studio already set.
+Never put a key or a password in a file or in chat. Pictures of real people need the owner's yes, every time.
 
 ## Running an edit job
 

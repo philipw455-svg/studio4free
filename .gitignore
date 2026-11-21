@@ -7,3 +7,5 @@ stock/
 .DS_Store
 app/*.exe
 app/*.ico
+brands/*/.brain.json
+page/ad-editor/dist/

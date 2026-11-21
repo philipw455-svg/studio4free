@@ -4,3 +4,4 @@ Pillow
 tzdata
 numpy
 onnxruntime
+playwright==1.49.1

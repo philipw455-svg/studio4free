@@ -10,6 +10,7 @@ YouTube video to clips, your own video to clips, unedited video to edited video,
 - `app/` is a small Windows launcher that opens the page in its own window.
 - `tests/` holds the tests. Run them with `python -B -m unittest discover -s tests`.
 - `CLAUDE.md` tells any Claude Code session how to run a job from start to finish.
+- `brands/<brand-id>/` is a brand's brain for ad jobs, and `studio/ads/` holds the ad styles. See "Business automation" in `CLAUDE.md`.
 
 ## Setup
 

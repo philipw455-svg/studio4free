@@ -1,0 +1,229 @@
+<title>Ad Maker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* One box: say what the ad is. Claude writes it, checks it against the brand brain, films it and puts the video here. */
+:root{
+  --bg:#0E0E11; --panel:#16161B; --raise:#1D1D24; --line:#2A2A33; --ink:#E8E8EC; --quiet:#9A9AA8; --accent:#FF4F6D; --ok:#5BD69A; --warn:#F2B84B;
+  --sans:"Inter Tight", system-ui, -apple-system, Segoe UI, sans-serif; --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--sans);padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 60px;margin:0}
+button,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{max-width:720px;margin:0 auto}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding-block:20px 16px}
+.brandmark{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--quiet)}
+h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.grow{flex:1 1 auto}
+select,textarea{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:0}
+textarea{width:100%;resize:vertical;min-height:130px;font-size:17px;line-height:1.4;padding:14px}
+.btn{border:1px solid var(--line);background:var(--raise);border-radius:999px;padding:9px 16px;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#22062F;padding:11px 22px;font-size:16px}
+.btn.small{padding:5px 12px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:default}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.lbl{font-size:12px;color:var(--quiet);font-weight:500;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;color:var(--quiet);text-align:left}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ideas .chip{font-size:13px;line-height:1.3;border-radius:14px}
+.hint{font-size:13px;color:var(--quiet);margin:0}
+.msg{font-size:14px;margin:0}
+.msg.bad,.prob{color:var(--warn)}
+.msg.good{color:var(--ok)}
+.prob{font-size:14px}
+.prob::before{content:"! ";font-family:var(--mono)}
+h2{font-size:13px;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--quiet);margin:30px 0 12px}
+.list{display:flex;flex-direction:column;gap:14px}
+.ad{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.ad .ask{font-size:16px;font-weight:600;margin:0;overflow-wrap:anywhere}
+.meta{font-family:var(--mono);font-size:12px;color:var(--quiet)}
+.status{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:3px 9px;color:var(--quiet);white-space:nowrap}
+.status.done{color:var(--ok);border-color:var(--ok)}
+.status.making{color:var(--accent);border-color:var(--accent)}
+video{width:100%;max-width:340px;border-radius:16px;border:1px solid var(--line);background:var(--raise);display:block}
+.note{font-size:14px;color:var(--ink);margin:0;white-space:pre-wrap}
+.empty{color:var(--quiet);padding:24px;text-align:center;border:1px dashed var(--line);border-radius:16px}
+.change textarea{min-height:70px;font-size:15px}
+</style>
+
+<main>
+<header class="top">
+  <div>
+    <div class="brandmark">Studio4Free · Business automation</div>
+    <h1>Ad Maker</h1>
+  </div>
+  <div class="grow"></div>
+  <select id="brandPick" aria-label="Which brand"></select>
+</header>
+
+<section class="panel" aria-label="New ad">
+  <label class="lbl" for="ask">What ad do you want?</label>
+  <textarea id="ask" placeholder="Say it the way you would to a friend: the style, the theme, the camera, who is in it, what happens."></textarea>
+  <div class="chips ideas" id="ideas" aria-label="Ideas to start from"></div>
+  <div class="row">
+    <span class="lbl">Length</span>
+    <div class="chips" id="lenPick"></div>
+  </div>
+  <div class="row">
+    <span class="lbl">Shape</span>
+    <div class="chips" id="shapePick"></div>
+  </div>
+  <div id="warn"></div>
+  <div class="row">
+    <button class="btn primary" id="go" type="button">Make this ad</button>
+    <p class="msg" id="goMsg"></p>
+  </div>
+  <p class="hint">Claude writes it, checks it against the brand's rules, films it and puts the video below. Nothing posts until you approve it.</p>
+</section>
+
+<h2>Your ads</h2>
+<div class="list" id="list"><div class="empty">Loading…</div></div>
+</main>
+
+<script>
+(() => {
+const $ = (s) => document.querySelector(s);
+const h = (tag, attrs = {}, ...kids) => {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "on") for (const [ev, fn] of Object.entries(v)) el.addEventListener(ev, fn);
+    else if (v !== false && v != null) el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid);
+  return el;
+};
+const IDEAS = [
+  "Hype kinetic typography with a brand launch theme of ancient Rome. Big camera moves through the scene, and feature the Trojan horse.",
+  "Use all 4 mascots to tell a story: the group loses each other on a night out, and Noxi brings everyone's photos back together.",
+  "A quick sting: the logo lands, one line, then the link.",
+];
+const LENGTHS = ["10 s", "15 s", "30 s", "60 s"], SHAPES = ["9:16", "1:1", "16:9"];
+const STATUS = { asked: "Sent to Claude", making: "Claude is making it", done: "Ready to watch", approved: "Approved", stuck: "Needs you" };
+let BRANDS = [], brand = null, db = null, comments = null, ads = [], len = "15 s", shape = "9:16";
+
+function chips(el, options, get, set) {
+  el.replaceChildren(...options.map((o) => h("button", { type: "button", class: "chip", "aria-pressed": String(o === get()),
+    on: { click: () => { set(o); chips(el, options, get, set); } } }, o)));
+}
+chips($("#lenPick"), LENGTHS, () => len, (v) => (len = v));
+chips($("#shapePick"), SHAPES, () => shape, (v) => (shape = v));
+$("#ideas").replaceChildren(...IDEAS.map((t) => h("button", { type: "button", class: "chip", on: { click: () => { $("#ask").value = t; check(); $("#ask").focus(); } } }, t)));
+
+// Words the brand may never say: warn while typing. Claude's full check runs again on what it writes.
+function banned(text) {
+  if (!brand) return [];
+  const low = " " + text.toLowerCase() + " ";
+  return (brand.never || []).filter((w) => low.includes(w.toLowerCase())).concat((brand.avoid || []).filter((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text)));
+}
+function check() {
+  const hits = banned($("#ask").value);
+  $("#warn").replaceChildren(...hits.map((w) => h("p", { class: "prob" }, `"${w}" is on ${brand.name}'s do-not-say list, so the ad can't use it.`)));
+}
+$("#ask").addEventListener("input", check);
+
+function say(el, text, kind) { el.textContent = text; el.className = "msg" + (kind ? " " + kind : ""); }
+
+// Hand the request to the Claude Code session watching this page. Returns "sent" or the reason it could not.
+async function tellClaude(anchorEl, text) {
+  if (!comments) return "none";
+  try {
+    const can = await comments.canSendToClaude();
+    if (can !== "available") return can;
+    const anchor = await comments.anchorFor(anchorEl);
+    await comments.sendToClaude({ anchor, text });
+    return "sent";
+  } catch (e) { return (e && e.code) || "error"; }
+}
+const NOT_SENT = {
+  no_session: "Saved. No Claude Code session is listening right now: open Claude Code and say “make my ads”.",
+  writers_only: "Saved. Only the page's owner can send it to Claude.",
+};
+const notSent = (r) => NOT_SENT[r] || "Saved. It could not reach Claude by itself: tell Claude Code “make my ads”.";
+
+$("#go").addEventListener("click", async () => {
+  const ask = $("#ask").value.trim(), msg = $("#goMsg");
+  if (!ask) { say(msg, "Write what you want first.", "bad"); return; }
+  if (!db) { say(msg, "Open this page signed in to send ads to Claude.", "bad"); return; }
+  const id = "ad-" + Date.now().toString(36);
+  const doc = { brand: brand.id, ask, length: parseInt(len, 10), shape, status: "asked", createdAt: Date.now(), changes: [] };
+  $("#go").disabled = true; say(msg, "Sending…");
+  // The click is the gesture sendToClaude needs, so start it before the save finishes.
+  const sent = tellClaude($("#go"), `Make this ad now: requests/${id} (${brand.name}, ${len}, ${shape}). "${ask}"`);
+  try { await db.doc(`requests/${id}`).set(doc); } catch (e) { say(msg, "Could not save: " + ((e && e.message) || "try again"), "bad"); $("#go").disabled = false; return; }
+  const r = await sent;
+  $("#go").disabled = false;
+  if (r === "sent") { say(msg, "Sent. Claude is starting on it now.", "good"); $("#ask").value = ""; check(); }
+  else say(msg, notSent(r), "bad");
+});
+
+function renderList() {
+  const list = $("#list");
+  const mine = ads.filter((a) => a.brand === (brand && brand.id)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  if (!mine.length) { list.replaceChildren(h("div", { class: "empty" }, db ? "No ads yet. Describe one above." : "Open this page signed in to see your ads.")); return; }
+  list.replaceChildren(...mine.map(card));
+}
+function card(a) {
+  const el = h("article", { class: "ad" });
+  const st = a.status || "asked";
+  el.append(h("div", { class: "row" },
+    h("span", { class: "status " + (st === "done" || st === "approved" ? "done" : st === "making" ? "making" : "") }, STATUS[st] || st),
+    h("span", { class: "meta" }, `${a.length || ""} s · ${a.shape || "9:16"} · ${new Date(a.createdAt || 0).toLocaleDateString()}`)));
+  el.append(h("p", { class: "ask" }, a.ask || ""));
+  for (const c of a.changes || []) el.append(h("p", { class: "note" }, "Change: " + c.text));
+  if (a.note) el.append(h("p", { class: "note" }, "Claude: " + a.note));
+  if (a.video && a.video.url) el.append(h("video", { src: a.video.url, controls: true, playsinline: true, preload: "metadata" }));
+  const probs = a.problems || [];
+  if (a.video && probs.length) {
+    el.append(h("span", { class: "lbl" }, `The brand check found ${probs.length} problem${probs.length > 1 ? "s" : ""}`));
+    for (const p of probs) el.append(h("p", { class: "prob" }, p));
+  } else if (a.video) el.append(h("p", { class: "msg good" }, "The brand check found no problems."));
+  if (a.video) el.append(changeBox(a));
+  return el;
+}
+function changeBox(a) {
+  const box = h("div", { class: "change panel" });
+  const ta = h("textarea", { "aria-label": "What to change", placeholder: "What should change? Claude remakes it." });
+  const msg = h("p", { class: "msg" });
+  const send = h("button", { type: "button", class: "btn", on: { click: async () => {
+    const text = ta.value.trim(); if (!text) { say(msg, "Write what to change first.", "bad"); return; }
+    send.disabled = true;
+    const sent = tellClaude(send, `Change this ad now: requests/${a.id}. "${text}"`);
+    try { await db.doc(`requests/${a.id}`).update({ status: "asked", changes: (a.changes || []).concat([{ at: Date.now(), text }]) }); }
+    catch (e) { say(msg, "Could not save: " + ((e && e.message) || "try again"), "bad"); send.disabled = false; return; }
+    const r = await sent; send.disabled = false;
+    if (r === "sent") say(msg, "Sent. Claude is remaking it.", "good"); else say(msg, notSent(r), "bad");
+  } } }, "Remake with this change");
+  const ok = h("button", { type: "button", class: "btn small", disabled: a.status === "approved", on: { click: async () => {
+    try { await db.doc(`requests/${a.id}`).update({ status: "approved", approvedAt: Date.now() }); } catch (e) { say(msg, "Could not save.", "bad"); }
+  } } }, a.status === "approved" ? "Approved" : "I like it");
+  box.append(ta, h("div", { class: "row" }, send, ok), msg);
+  return box;
+}
+
+function pickBrand(id) { brand = BRANDS.find((b) => b.id === id) || BRANDS[0]; check(); renderList(); }
+$("#brandPick").addEventListener("change", (e) => pickBrand(e.target.value));
+
+(async () => {
+  try { BRANDS = await (await fetch("brands.json")).json(); } catch (e) { BRANDS = []; }
+  $("#brandPick").replaceChildren(...BRANDS.map((b) => h("option", { value: b.id }, b.name)));
+  pickBrand(BRANDS[0] && BRANDS[0].id);
+  const cl = window.claude && typeof window.claude.use === "function" ? window.claude : null;
+  if (!cl) { renderList(); return; }
+  cl.use("comments").then((x) => { comments = x || null; }).catch(() => {});
+  const timer = setTimeout(() => { if (!db) $("#list").replaceChildren(h("div", { class: "empty" }, "Could not load your ads. Open this page signed in.")); }, 10000);
+  try { db = await cl.use("db"); } catch (e) { db = null; }
+  clearTimeout(timer);
+  if (!db) { renderList(); return; }
+  db.collection("requests").onSnapshot((snap) => {
+    ads = snap.docs.filter((d) => d.exists).map((d) => Object.assign({ id: d.id }, d.data()));
+    renderList();
+  }, () => $("#list").replaceChildren(h("div", { class: "empty" }, "Could not load your ads.")));
+})();
+})();
+</script>

@@ -1,0 +1,4 @@
+{"brand": "noxi", "title": "Example sting", "style": "Sting", "postAt": "2026-11-16T12:15:00-06:00",
+ "length": 2, "shape": "9:16", "look": "Mosaic", "mode": "dark", "pace": "Normal", "sound": "Sound effects only",
+ "cast": ["Nova", "Luna", "Echo", "Hoot"], "endCard": "new sting end card", "cta": "appnoxi.com/go",
+ "frames": [{"n": 1, "start": 0, "end": 2, "picture": "Column N icon pops in, the mascot lineup rises", "words": "Remember the night.", "sound": "whoosh"}]}

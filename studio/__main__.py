@@ -8,7 +8,20 @@ def nums(text):
     return [int(x) for x in text.split(",") if x.strip()] if text else None
 
 
+# Business automation: these steps have their own options.
+#   python -m studio brain show --brand noxi          print the whole brand brain (read it before any ad work)
+#   python -m studio brain-check noxi storyboard.json  list every problem in a storyboard
+#   python -m studio film storyboard.json --out ...    film an ad template (add --stills 0.5,3 to draw a few frames first)
+#   python -m studio ad context|choices|slots|learn   the ad job helpers
+SUBTOOLS = {"brain": "brain", "brain-check": "brain_check", "film": "film", "ad": "adjob"}
+
+
 def main():
+    import importlib
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] in SUBTOOLS:
+        code = importlib.import_module(f".{SUBTOOLS[sys.argv[1]]}", __package__).main(sys.argv[2:])
+        sys.exit(code or 0)
     p = argparse.ArgumentParser(prog="studio", description="Turn a long video into short clips and schedule them.")
     sub = p.add_subparsers(dest="step", required=True)
 

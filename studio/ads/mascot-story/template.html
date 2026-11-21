@@ -1,0 +1,81 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Mascot story</title>
+<style>
+  .dots{position:absolute;inset:-40px;background-image:radial-gradient(color-mix(in srgb, var(--accent) 22%, transparent) 2.2px, transparent 2.6px);background-size:26px 26px}
+  .panel{position:absolute;left:50%;width:820px;height:900px;margin-left:-410px;top:250px;border-radius:28px;overflow:hidden;
+    border:8px solid var(--text);background:linear-gradient(180deg,#1B1530,#2A1A44);box-shadow:16px 16px 0 color-mix(in srgb, var(--accent) 70%, transparent)}
+  .panel.day{background:linear-gradient(180deg,#9FB7E6,#E9D7F0)}
+  .panel .who{position:absolute;bottom:0;height:88%;display:flex;align-items:flex-end;justify-content:center;left:0;right:0;gap:0}
+  .panel .who div{flex:0 0 auto;height:100%;background-repeat:no-repeat}
+  .cap{position:absolute;left:0;right:0;top:0;padding:26px 34px;background:var(--text);color:var(--ground) !important;border-radius:22px;
+    font-family:var(--body);font-weight:800;font-size:calc(56px * var(--wscale));line-height:1.12;text-align:center;box-shadow:10px 10px 0 color-mix(in srgb, var(--accent) 70%, transparent)}
+  .end{position:absolute;inset:0;opacity:0}
+  .end img.logo{position:absolute;left:50%;top:300px;width:280px;height:280px;margin-left:-140px;border-radius:62px}
+  .end .link{position:absolute;left:0;right:0;top:640px;text-align:center;font-weight:800;font-size:58px;color:var(--accent) !important}
+  .end img.cast{position:absolute;left:0;bottom:0;width:100%;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 30%);mask-image:linear-gradient(to bottom,transparent,#000 30%)}
+</style></head>
+<body>
+<div class="dots" id="dots"></div>
+<div id="panels"></div>
+<div class="safe"><div class="cap words" id="cap"></div></div>
+<div class="end" id="end"><img class="logo" id="logo" alt=""><div class="link words" id="link"></div><img class="cast" id="cast" alt=""></div>
+<script src="../runtime.js"></script>
+<script>
+// Mascot story: comic panels, one caption per frame, then the mascot end card.
+const { SB, BRAND, H, tw, out, back, frames, file, pace } = S4F;
+// Where each mascot stands in the lineup picture, as a share of its width (Nova, Luna, Echo, Hoot from left to right).
+const ORDER = (BRAND.mascots || []);
+const slot = (name) => Math.max(0, ORDER.indexOf(name));
+const panels = document.getElementById("panels"), cap = document.getElementById("cap"), end = document.getElementById("end");
+document.getElementById("logo").src = file(BRAND.logo || "");
+document.getElementById("link").textContent = SB.cta || "";
+const cast = document.getElementById("cast"); cast.src = file(BRAND.cast || "");
+const story = frames.filter((f) => !f.endCard);
+const els = story.map((f, i) => {
+  const p = document.createElement("div"); p.className = "panel" + (f.bg === "day" ? " day" : "");
+  const who = document.createElement("div"); who.className = "who";
+  const names = f.mascots && f.mascots.length ? f.mascots : [ORDER[i % Math.max(1, ORDER.length)]];
+  for (const n of names) {
+    const own = (BRAND.files || {})[`assets/mascots/${(n || "").toLowerCase()}.png`];
+    const d = document.createElement("div");
+    const PH = 790, w = names.length > 1 ? 390 : 620; // the panel's inner height, and the width each mascot gets
+    d.style.width = w + "px";
+    if (own) { d.style.backgroundImage = `url("${own}")`; d.style.backgroundSize = "contain"; d.style.backgroundPosition = "50% 100%"; }
+    else { // crop this mascot out of the lineup picture (1080 x 760, four mascots in a row), zoomed so the face fills the panel
+      const bgH = PH * 1.25, bgW = bgH * 1080 / 760, slotW = bgW / 4;
+      d.style.backgroundImage = `url("${file(BRAND.cast || "")}")`;
+      d.style.backgroundSize = `${bgW}px ${bgH}px`;
+      d.style.backgroundPosition = `${-(slot(n) * slotW - (w - slotW) / 2)}px ${PH - bgH * 0.92}px`;
+    }
+    who.appendChild(d);
+  }
+  p.appendChild(who); panels.appendChild(p); return { f, p, i };
+});
+const endF = frames.find((f) => f.endCard), endAt = endF ? endF.start : 1e9;
+S4F.setup((t) => {
+  document.getElementById("dots").style.transform = `translate(${(t * 18) % 26}px, ${(t * 9) % 26}px)`;
+  let cur = null;
+  for (const { f, p, i } of els) {
+    const on = t >= f.start && t < f.end + 0.3 && t < endAt;
+    p.style.display = on ? "block" : "none";
+    if (!on) continue;
+    cur = f;
+    const a = tw(t, f.start, f.start + 0.45 * pace, back);
+    const tilt = (i % 2 ? 2.5 : -2.5) * (1 - a) + (i % 2 ? 0.8 : -0.8);
+    p.style.transform = `translateY(${(1 - a) * -260}px) rotate(${tilt}deg) scale(${0.9 + 0.1 * a})`;
+    p.style.opacity = Math.min(1, a * 2);
+    p.style.zIndex = i;
+  }
+  if (cur) {
+    // The caption types on unless the scene picks another motion. Its spot: under the panel (bottom), in the middle, or over the top.
+    cap.style.top = S4F.spot(cur, { top: 20, middle: 600, bottom: 960 }, "bottom") + "px";
+    const motion = cur.motion || SB.motion || "type";
+    S4F.enter(cap, t, cur.start + 0.25 * S4F.paceOf(cur), Object.assign({}, cur, { motion }), cur.words || "");
+  } else cap.style.opacity = 0;
+  const e = tw(t, endAt, endAt + 0.5 * pace, out);
+  end.style.opacity = t >= endAt ? e : 0;
+  cast.style.transform = `translateY(${(1 - tw(t, endAt + 0.2, endAt + 0.8 * pace, back)) * 500}px)`;
+  document.getElementById("logo").style.transform = `scale(${0.6 + 0.4 * tw(t, endAt, endAt + 0.5 * pace, back)})`;
+});
+</script>
+</body></html>

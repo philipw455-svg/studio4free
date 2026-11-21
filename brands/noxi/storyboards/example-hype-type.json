@@ -1,0 +1,52 @@
+{
+ "brand": "noxi",
+ "shape": "9:16",
+ "mode": "dark",
+ "pace": "Normal",
+ "sound": "Sound effects only",
+ "cta": "appnoxi.com/go",
+ "postAt": "2026-11-17T17:00:00-06:00",
+ "title": "Example hype type",
+ "style": "Hype type",
+ "look": "Smoke",
+ "length": 12,
+ "bpm": 120,
+ "cast": [],
+ "endCard": "logo panel",
+ "frames": [
+  {
+   "n": 1,
+   "start": 0,
+   "end": 3,
+   "picture": "Panel",
+   "words": "You want the photos.",
+   "sound": "hit"
+  },
+  {
+   "n": 2,
+   "start": 3,
+   "end": 6,
+   "picture": "Panel with the recap screen",
+   "screen": "assets/screens/recap.jpg",
+   "words": "Your crew wants them too.",
+   "sound": "hit"
+  },
+  {
+   "n": 3,
+   "start": 6,
+   "end": 9,
+   "picture": "Panel",
+   "words": "One alert. One shot each.",
+   "sound": "hit"
+  },
+  {
+   "n": 4,
+   "start": 9,
+   "end": 12,
+   "picture": "Logo panel",
+   "words": "Remember the night.",
+   "endCard": true,
+   "sound": "hit"
+  }
+ ]
+}

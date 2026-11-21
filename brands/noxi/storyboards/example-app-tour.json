@@ -1,0 +1,53 @@
+{
+ "brand": "noxi",
+ "shape": "9:16",
+ "mode": "dark",
+ "pace": "Normal",
+ "sound": "Sound effects only",
+ "cta": "appnoxi.com/go",
+ "postAt": "2026-11-17T17:00:00-06:00",
+ "title": "Example app tour",
+ "style": "App tour",
+ "look": "Graphite",
+ "length": 12,
+ "cast": [],
+ "endCard": "logo end card",
+ "frames": [
+  {
+   "n": 1,
+   "start": 0,
+   "end": 3,
+   "picture": "Graphite Home",
+   "screen": "assets/screens/home-graphite-dark.jpg",
+   "words": "Remember the night.",
+   "sound": "whoosh"
+  },
+  {
+   "n": 2,
+   "start": 3,
+   "end": 6,
+   "picture": "The look picker",
+   "screen": "assets/screens/look.jpg",
+   "words": "Pick your look",
+   "sound": "whoosh"
+  },
+  {
+   "n": 3,
+   "start": 6,
+   "end": 9,
+   "picture": "The recap",
+   "screen": "assets/screens/recap.jpg",
+   "words": "Wake up to the recap",
+   "sound": "whoosh"
+  },
+  {
+   "n": 4,
+   "start": 9,
+   "end": 12,
+   "picture": "Logo end card",
+   "words": "",
+   "endCard": true,
+   "sound": "whoosh"
+  }
+ ]
+}
